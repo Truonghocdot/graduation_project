@@ -34,6 +34,7 @@ Thư mục này mô tả luồng nghiệp vụ dự kiến cho ứng dụng đ�
 | 11 | [Đánh giá và khiếu nại](./flows/11-danh-gia-va-khieu-nai.md) | Rating, ticket hỗ trợ và điều chỉnh giao dịch |
 | 12 | [Realtime và thông báo](./flows/12-realtime-va-thong-bao.md) | Vị trí, room, event, retry và fallback |
 | - | [Decision log](./open-questions.md) | Toàn bộ quyết định phạm vi đã chốt |
+| - | [Thiết kế database](./database/README.md) | ERD, data dictionary, constraint, index và migration plan |
 
 ## Phạm vi MVP
 
