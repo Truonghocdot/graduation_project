@@ -4,6 +4,8 @@ namespace App\Http\Requests\Api\V1\Quote;
 
 use App\Enums\BookingType;
 use App\Enums\ServiceType;
+use App\Enums\UserStatus;
+use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -12,7 +14,9 @@ class StoreQuoteRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return true;
+        $user = $this->user();
+
+        return $user instanceof User && $user->status === UserStatus::Active;
     }
 
     /** @return array<string, ValidationRule|array<mixed>|string> */

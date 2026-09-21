@@ -35,7 +35,7 @@ Không viết nghiệp vụ độc lập trong `service`, client hoặc driver a
 | 1 | `COMPLETED` | Phone auth, OTP, Sanctum, role, device, reset password |
 | 2 | `COMPLETED` | Driver onboarding API và Filament admin review/catalog đã hoàn tất |
 | 3 | `COMPLETED` | Catalog, Goong adapter, service area, pricing và quote |
-| 4 | `PENDING` | Tạo Delivery/Drive request, lịch, payer, wallet debit, voucher |
+| 4 | `COMPLETED` | Delivery/Drive request, lịch, payer, payment intent, cancellation và customer app |
 | 5 | `PENDING` | Matching, offer, assignment, Redis GEO và realtime service |
 | 6 | `PENDING` | Delivery/Drive execution và bằng chứng hoàn tất |
 | 7 | `PENDING` | Settlement, top-up SePay, withdrawal, refund, COD reconciliation |
@@ -157,30 +157,31 @@ Filament action không được tự `DB::table(...)->update()` để bỏ qua d
 - Fake Goong -> route snapshot -> quote đúng.
 - Giá xe máy/ô tô, extra km, voucher preview, service area, capacity, timeout và float tolerance có test.
 
-## 7. Phase 4 - Request và Payment Intent
+## 7. Phase 4 - Request và Payment Intent — `COMPLETED`
 
 ### Worker
 
-- `Quote -> ServiceRequest` cho Delivery/Drive, stops, payer type, schedule.
-- Wallet debit bằng ledger transaction; voucher tạo `DiscountTransaction` riêng.
-- Payment method bất biến sau khi tạo.
-- API `/delivery/orders`, `/rides/bookings`, cancellation trước assignment.
+- `Quote -> ServiceRequest` cho Delivery/Drive, hai stops, payer type và schedule đã triển khai.
+- Wallet debit/refund bằng ledger transaction cân bằng; voucher tạo `VoucherRedemption` và `DiscountTransaction` riêng.
+- Payment method bất biến sau khi tạo; CASH không ghi debit.
+- API `/delivery/orders`, `/rides/bookings`, cancellation trước assignment dùng `Idempotency-Key`.
+- Status history và transactional outbox được ghi cùng aggregate.
 
 ### Filament
 
-- `ServiceRequestResource` read-only/operational: filter status, payer, payment method, scheduled time.
-- Không cho admin sửa trực tiếp amount/status; override là Action có reason/audit.
+- `ServiceRequestResource` read-only/operational đã triển khai: filter status, payer, payment method, scheduled time.
+- Không cho admin sửa trực tiếp amount/status/payment; mọi can thiệp vận hành sau assignment để Phase 5+ có policy và audit riêng.
 
 ### Service/mobile
 
 - Service chưa quyết định state; chỉ nhận outbox sau khi worker commit.
-- Customer app tích hợp quote/create/cancel sau khi API contract pass.
+- `mobile/client` đã tích hợp login, catalog xe, quote, create Delivery/Drive, WALLET/CASH và cancel.
 - Driver app chưa nhận offer.
 
 ### Gate
 
-- Wallet debit atomic, voucher usage idempotent, CASH không debit.
-- Schedule dispatch state và cancellation test pass.
+- Wallet debit atomic/cân bằng, voucher usage idempotent, CASH không debit.
+- Schedule state, owner isolation, cancellation refund/restore và outbox test pass.
 
 ## 8. Phase 5 - Matching và Realtime
 

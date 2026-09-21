@@ -1,0 +1,385 @@
+import 'api_transport.dart';
+
+enum ServiceKind {
+  delivery('DELIVERY'),
+  drive('DRIVE');
+
+  const ServiceKind(this.apiValue);
+  final String apiValue;
+}
+
+enum PaymentChoice {
+  wallet('WALLET'),
+  cash('CASH');
+
+  const PaymentChoice(this.apiValue);
+  final String apiValue;
+}
+
+enum PayerChoice {
+  orderer('ORDERER'),
+  recipient('RECIPIENT');
+
+  const PayerChoice(this.apiValue);
+  final String apiValue;
+}
+
+class BookingSession {
+  const BookingSession({
+    required this.baseUrl,
+    required this.token,
+    required this.vehicleTypeId,
+  });
+
+  final String baseUrl;
+  final String token;
+  final String vehicleTypeId;
+
+  BookingSession copyWith({
+    String? baseUrl,
+    String? token,
+    String? vehicleTypeId,
+  }) {
+    return BookingSession(
+      baseUrl: baseUrl ?? this.baseUrl,
+      token: token ?? this.token,
+      vehicleTypeId: vehicleTypeId ?? this.vehicleTypeId,
+    );
+  }
+}
+
+class VehicleOption {
+  const VehicleOption({
+    required this.id,
+    required this.key,
+    required this.name,
+  });
+
+  final String id;
+  final String key;
+  final String name;
+
+  factory VehicleOption.fromJson(Map<String, dynamic> json) {
+    return VehicleOption(
+      id: json['id'] as String,
+      key: json['key'] as String,
+      name: json['name'] as String,
+    );
+  }
+}
+
+class LocationDraft {
+  const LocationDraft({
+    required this.address,
+    required this.latitude,
+    required this.longitude,
+  });
+
+  final String address;
+  final double latitude;
+  final double longitude;
+
+  Map<String, dynamic> toJson() => {
+    'address': address,
+    'latitude': latitude,
+    'longitude': longitude,
+  };
+}
+
+class BookingDraft {
+  const BookingDraft({
+    required this.service,
+    required this.pickup,
+    required this.dropoff,
+    required this.goodsType,
+    required this.weightKg,
+    required this.passengerCount,
+    this.voucherCode,
+    this.scheduledAt,
+  });
+
+  final ServiceKind service;
+  final LocationDraft pickup;
+  final LocationDraft dropoff;
+  final String goodsType;
+  final double weightKg;
+  final int passengerCount;
+  final String? voucherCode;
+  final DateTime? scheduledAt;
+}
+
+class QuoteSummary {
+  const QuoteSummary({
+    required this.id,
+    required this.service,
+    required this.grossFare,
+    required this.voucherDiscount,
+    required this.customerPayable,
+    required this.currency,
+    required this.distanceMeters,
+    required this.durationSeconds,
+    required this.expiresAt,
+  });
+
+  final String id;
+  final ServiceKind service;
+  final double grossFare;
+  final double voucherDiscount;
+  final double customerPayable;
+  final String currency;
+  final double distanceMeters;
+  final int durationSeconds;
+  final DateTime expiresAt;
+
+  factory QuoteSummary.fromJson(Map<String, dynamic> json) {
+    final pricing = json['pricing'] as Map<String, dynamic>;
+    final route = json['route'] as Map<String, dynamic>;
+
+    return QuoteSummary(
+      id: json['id'] as String,
+      service: json['service_type'] == ServiceKind.delivery.apiValue
+          ? ServiceKind.delivery
+          : ServiceKind.drive,
+      grossFare: (pricing['gross_fare'] as num).toDouble(),
+      voucherDiscount: (pricing['voucher_discount'] as num).toDouble(),
+      customerPayable: (pricing['customer_payable'] as num).toDouble(),
+      currency: pricing['currency'] as String,
+      distanceMeters: (route['distance_meters'] as num).toDouble(),
+      durationSeconds: (route['duration_seconds'] as num).toInt(),
+      expiresAt: DateTime.parse(json['expires_at'] as String),
+    );
+  }
+}
+
+class ServiceRequestSummary {
+  const ServiceRequestSummary({
+    required this.id,
+    required this.service,
+    required this.status,
+    required this.paymentMethod,
+    required this.customerPayable,
+  });
+
+  final String id;
+  final ServiceKind service;
+  final String status;
+  final PaymentChoice paymentMethod;
+  final double customerPayable;
+
+  factory ServiceRequestSummary.fromJson(Map<String, dynamic> json) {
+    final payment = json['payment'] as Map<String, dynamic>;
+
+    return ServiceRequestSummary(
+      id: json['id'] as String,
+      service: json['service_type'] == ServiceKind.delivery.apiValue
+          ? ServiceKind.delivery
+          : ServiceKind.drive,
+      status: json['status'] as String,
+      paymentMethod: payment['method'] == PaymentChoice.wallet.apiValue
+          ? PaymentChoice.wallet
+          : PaymentChoice.cash,
+      customerPayable: (payment['customer_payable'] as num).toDouble(),
+    );
+  }
+}
+
+abstract interface class BookingGateway {
+  Future<String> login({
+    required String baseUrl,
+    required String phone,
+    required String password,
+  });
+
+  Future<List<VehicleOption>> loadVehicleTypes(BookingSession session);
+
+  Future<QuoteSummary> createQuote(BookingSession session, BookingDraft draft);
+
+  Future<ServiceRequestSummary> createServiceRequest({
+    required BookingSession session,
+    required QuoteSummary quote,
+    required PaymentChoice payment,
+    required PayerChoice payer,
+    required String idempotencyKey,
+    String? recipientUserId,
+  });
+
+  Future<ServiceRequestSummary> cancelServiceRequest({
+    required BookingSession session,
+    required ServiceRequestSummary serviceRequest,
+    required String idempotencyKey,
+    required String reasonCode,
+  });
+}
+
+class BookingApi implements BookingGateway {
+  BookingApi({ApiTransport? transport})
+    : _transport = transport ?? createApiTransport();
+
+  final ApiTransport _transport;
+
+  @override
+  Future<String> login({
+    required String baseUrl,
+    required String phone,
+    required String password,
+  }) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: Uri.parse('${baseUrl.replaceFirst(RegExp(r'/$'), '')}/auth/login'),
+      token: '',
+      body: {
+        'phone': phone,
+        'password': password,
+        'device_id': 'customer-app-session',
+        'app_type': 'CUSTOMER_APP',
+        'platform': 'ANDROID',
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw BookingApiException.fromResponse(response);
+    }
+
+    final token = response.body['token'];
+    if (token is! String || token.isEmpty) {
+      throw const BookingApiException('Phiên đăng nhập không hợp lệ.');
+    }
+
+    return token;
+  }
+
+  @override
+  Future<List<VehicleOption>> loadVehicleTypes(BookingSession session) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/catalog/vehicle-types'),
+      token: session.token,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw BookingApiException.fromResponse(response);
+    }
+
+    final data = response.body['data'];
+    if (data is! List) {
+      throw const BookingApiException('Danh sách phương tiện không hợp lệ.');
+    }
+
+    return data
+        .whereType<Map<String, dynamic>>()
+        .map(VehicleOption.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<QuoteSummary> createQuote(
+    BookingSession session,
+    BookingDraft draft,
+  ) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, '/quotes'),
+      token: session.token,
+      body: {
+        'service_type': draft.service.apiValue,
+        'vehicle_type_id': session.vehicleTypeId,
+        'booking_type': draft.scheduledAt == null ? 'NOW' : 'SCHEDULED',
+        'scheduled_at': ?draft.scheduledAt?.toUtc().toIso8601String(),
+        'pickup': draft.pickup.toJson(),
+        'dropoff': draft.dropoff.toJson(),
+        'service_payload': draft.service == ServiceKind.delivery
+            ? {'goods_type': draft.goodsType, 'weight_kg': draft.weightKg}
+            : {'passenger_count': draft.passengerCount},
+        'voucher_code': ?draft.voucherCode,
+      },
+    );
+
+    return QuoteSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<ServiceRequestSummary> createServiceRequest({
+    required BookingSession session,
+    required QuoteSummary quote,
+    required PaymentChoice payment,
+    required PayerChoice payer,
+    required String idempotencyKey,
+    String? recipientUserId,
+  }) async {
+    final path = quote.service == ServiceKind.delivery
+        ? '/delivery/orders'
+        : '/rides/bookings';
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, path),
+      token: session.token,
+      headers: {'Idempotency-Key': idempotencyKey},
+      body: {
+        'quote_id': quote.id,
+        'payment_method': payment.apiValue,
+        if (quote.service == ServiceKind.delivery) 'payer_type': payer.apiValue,
+        'recipient_user_id': ?recipientUserId,
+      },
+    );
+
+    return ServiceRequestSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<ServiceRequestSummary> cancelServiceRequest({
+    required BookingSession session,
+    required ServiceRequestSummary serviceRequest,
+    required String idempotencyKey,
+    required String reasonCode,
+  }) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, '/service-requests/${serviceRequest.id}/cancel'),
+      token: session.token,
+      headers: {'Idempotency-Key': idempotencyKey},
+      body: {'reason_code': reasonCode},
+    );
+
+    return ServiceRequestSummary.fromJson(_data(response));
+  }
+
+  Uri _uri(BookingSession session, String path) {
+    return Uri.parse('${session.baseUrl.replaceFirst(RegExp(r'/$'), '')}$path');
+  }
+
+  Map<String, dynamic> _data(ApiResponse response) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw BookingApiException.fromResponse(response);
+    }
+
+    final data = response.body['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const BookingApiException('Phản hồi từ máy chủ không hợp lệ.');
+    }
+
+    return data;
+  }
+}
+
+class BookingApiException implements Exception {
+  const BookingApiException(this.message);
+
+  final String message;
+
+  factory BookingApiException.fromResponse(ApiResponse response) {
+    final errors = response.body['errors'];
+    if (errors is Map<String, dynamic>) {
+      for (final value in errors.values) {
+        if (value is List && value.isNotEmpty) {
+          return BookingApiException(value.first.toString());
+        }
+      }
+    }
+
+    return BookingApiException(
+      response.body['message']?.toString() ??
+          'Không thể hoàn tất yêu cầu (${response.statusCode}).',
+    );
+  }
+
+  @override
+  String toString() => message;
+}

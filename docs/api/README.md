@@ -2,9 +2,9 @@
 
 > Base path: `/api/v1`
 >
-> Trạng thái: **Implemented cho Phase 1, Phase 2 và Phase 3**
+> Trạng thái: **Implemented cho Phase 1, Phase 2, Phase 3 và Phase 4**
 
-Tài liệu này mô tả các API đang có trong `worker/routes/api.php`. Phase 3 bổ sung endpoint quote dùng cho cả Delivery và Drive; endpoint tạo đơn, matching, wallet payment và realtime nghiệp vụ vẫn thuộc các phase sau.
+Tài liệu này mô tả các API đang có trong `worker/routes/api.php`. Phase 3 bổ sung quote và Phase 4 bổ sung tạo/hủy Delivery/Drive cùng payment intent; matching, settlement và realtime nghiệp vụ vẫn thuộc các phase sau.
 
 Nghiệp vụ quản trị không mở REST API. Admin đăng nhập và thao tác tại Filament `/admin`; Filament gọi trực tiếp domain service trong worker để duyệt/từ chối/khóa tài xế và ghi audit.
 
@@ -65,6 +65,7 @@ Các status thường gặp:
 | `401` | Thiếu hoặc token không hợp lệ |
 | `403` | Đã đăng nhập nhưng thiếu role/quyền |
 | `404` | Resource không tồn tại hoặc không thuộc actor hiện tại |
+| `409` | Idempotency key đã được dùng với payload khác hoặc request đang xử lý |
 | `422` | Validation hoặc trạng thái nghiệp vụ không hợp lệ |
 | `429` | Vượt rate limit |
 
@@ -94,6 +95,9 @@ Các status thường gặp:
 | `PUT` | `/driver/availability/online` | `auth:sanctum` + `role:DRIVER` | 2 |
 | `PUT` | `/driver/availability/offline` | `auth:sanctum` + `role:DRIVER` | 2 |
 | `POST` | `/quotes` | `auth:sanctum` + `quotes` throttle | 3 |
+| `POST` | `/delivery/orders` | `auth:sanctum` + `Idempotency-Key` | 4 |
+| `POST` | `/rides/bookings` | `auth:sanctum` + `Idempotency-Key` | 4 |
+| `POST` | `/service-requests/{serviceRequest}/cancel` | `auth:sanctum` + owner + `Idempotency-Key` | 4 |
 
 ## Phase 1 - Authentication
 
@@ -393,6 +397,7 @@ Chỉ `DRIVER`. Driver đang `BUSY` hoặc có assignment active không được
 - Chỉ user `ACTIVE` có role `ADMIN` được truy cập panel.
 - `DriverProfileResource`: list/filter/detail, documents, vehicles, capabilities, approve/reject/suspend.
 - `VehicleTypeResource`: CRUD catalog loại xe và giới hạn vận hành.
+- `ServiceRequestResource`: list/filter/detail read-only theo service, trạng thái, payer, payment và lịch đặt.
 - Các quyết định review gọi `DriverReviewService`, tạo role/wallet/capability và ghi `audit_logs`; không cập nhật trực tiếp từ UI.
 - Tạo admin bằng command:
 
@@ -429,6 +434,59 @@ Các lỗi riêng:
 - `422`: thiếu pricing rule, ngoài service area, voucher không hợp lệ, quá tải/sức chứa hoặc payload sai service type.
 - `503 MAP_ROUTE_UNAVAILABLE`: Goong timeout, lỗi upstream hoặc response route không hợp lệ; không tạo quote.
 - Endpoint bị giới hạn `30 requests/phút/user` bằng limiter `quotes`.
+
+## Phase 4 - Service Request và Payment Intent
+
+Các endpoint tạo/hủy yêu cầu bắt buộc header:
+
+```http
+Idempotency-Key: client-generated-stable-key
+```
+
+Retry cùng key và cùng payload trả lại đúng resource đã tạo. Dùng lại key với payload khác trả `409`.
+
+### `POST /delivery/orders`
+
+```json
+{
+  "quote_id": "quote-public-uuid",
+  "payment_method": "WALLET",
+  "payer_type": "ORDERER",
+  "recipient_user_id": null,
+  "stops": {
+    "pickup": {"contact_name": "Sender", "contact_phone": "0900000001"},
+    "dropoff": {"contact_name": "Receiver", "contact_phone": "0900000002"}
+  }
+}
+```
+
+- Quote phải thuộc user, còn `ACTIVE`, chưa hết hạn và có service `DELIVERY`.
+- `ORDERER` hỗ trợ `WALLET`/`CASH`.
+- `RECIPIENT` yêu cầu `recipient_user_id` của user `ACTIVE` và hiện chỉ hỗ trợ `CASH`; server không tự trừ ví người nhận.
+- WALLET khóa ví, kiểm tra available balance và tạo ledger transaction cân bằng; CASH không ghi ledger.
+
+### `POST /rides/bookings`
+
+```json
+{
+  "quote_id": "quote-public-uuid",
+  "payment_method": "CASH"
+}
+```
+
+Quote phải có service `DRIVE`; payer luôn là `ORDERER`. Response `201` của cả hai endpoint trả `ServiceRequestResource`, gồm status, stops, detail Delivery/Drive và payment snapshot.
+
+`NOW` tạo `SEARCHING_DRIVER`; `SCHEDULED` tạo `SCHEDULED` và chưa đặt `search_started_at`. Server ghi status history cùng outbox event `DELIVERY_ORDER_CREATED`/`RIDE_BOOKING_CREATED`; request tức thời có thêm `DELIVERY_SEARCH_REQUESTED`/`RIDE_SEARCH_REQUESTED`.
+
+Voucher trong quote được kiểm tra lại, tạo một `VoucherRedemption` và `DiscountTransaction`; không tạo wallet entry cho phần voucher.
+
+### `POST /service-requests/{serviceRequest}/cancel`
+
+```json
+{"reason_code": "CUSTOMER_CHANGED_MIND"}
+```
+
+Chỉ chủ request được hủy khi status còn `SCHEDULED`/`SEARCHING_DRIVER` và chưa có active assignment. WALLET được refund bằng ledger transaction đảo cân bằng; CASH không có refund; voucher được restore theo giới hạn campaign. Response `200` trả request ở `CANCELLED`.
 
 ## Client integration checklist
 

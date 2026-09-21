@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\LedgerAccountFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -18,6 +20,9 @@ use Illuminate\Support\Str;
 ])]
 class LedgerAccount extends Model
 {
+    /** @use HasFactory<LedgerAccountFactory> */
+    use HasFactory;
+
     protected static function booted(): void
     {
         static::creating(function (LedgerAccount $account): void {

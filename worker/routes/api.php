@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\Auth\ResetPasswordController;
 use App\Http\Controllers\Api\V1\Auth\VerifyPasswordResetController;
 use App\Http\Controllers\Api\V1\Auth\VerifyPhoneController;
 use App\Http\Controllers\Api\V1\Catalog\VehicleTypeController;
+use App\Http\Controllers\Api\V1\DeliveryOrderController;
 use App\Http\Controllers\Api\V1\Driver\ApplicationController as DriverApplicationController;
 use App\Http\Controllers\Api\V1\Driver\ApplicationSubmissionController;
 use App\Http\Controllers\Api\V1\Driver\AvailabilityController;
@@ -18,6 +19,8 @@ use App\Http\Controllers\Api\V1\Driver\SelectedVehicleController;
 use App\Http\Controllers\Api\V1\Driver\VehicleController;
 use App\Http\Controllers\Api\V1\MeController;
 use App\Http\Controllers\Api\V1\QuoteController;
+use App\Http\Controllers\Api\V1\RideBookingController;
+use App\Http\Controllers\Api\V1\ServiceRequestCancellationController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -48,6 +51,9 @@ Route::prefix('v1')->group(function (): void {
         Route::get('catalog/vehicle-types', VehicleTypeController::class);
         Route::post('quotes', QuoteController::class)
             ->middleware('throttle:quotes');
+        Route::post('delivery/orders', [DeliveryOrderController::class, 'store']);
+        Route::post('rides/bookings', [RideBookingController::class, 'store']);
+        Route::post('service-requests/{serviceRequest}/cancel', ServiceRequestCancellationController::class);
 
         Route::get('driver/application', [DriverApplicationController::class, 'show']);
         Route::post('driver/application', [DriverApplicationController::class, 'store']);

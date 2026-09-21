@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\WalletFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
@@ -24,6 +26,9 @@ use Illuminate\Support\Str;
 ])]
 class Wallet extends Model
 {
+    /** @use HasFactory<WalletFactory> */
+    use HasFactory;
+
     protected static function booted(): void
     {
         static::creating(function (Wallet $wallet): void {
