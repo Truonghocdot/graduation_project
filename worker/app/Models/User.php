@@ -6,6 +6,8 @@ use App\Enums\RoleKey;
 use App\Enums\UserStatus;
 use Carbon\CarbonImmutable;
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -41,7 +43,7 @@ use Laravel\Sanctum\HasApiTokens;
     'last_login_at',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
@@ -85,6 +87,13 @@ class User extends Authenticatable
     public function hasRole(RoleKey $role): bool
     {
         return $this->roles()->where('key', $role->value)->exists();
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->status === UserStatus::Active
+            && $this->hasRole(RoleKey::Admin)
+            && $panel->getId() === 'admin';
     }
 
     public function initials(): string

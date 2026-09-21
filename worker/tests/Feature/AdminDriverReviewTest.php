@@ -6,6 +6,7 @@ use App\Enums\ServiceType;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\VehicleType;
+use App\Services\Driver\DriverReviewService;
 use Database\Seeders\RoleSeeder;
 use Database\Seeders\VehicleTypeSeeder;
 use Laravel\Sanctum\Sanctum;
@@ -15,12 +16,10 @@ beforeEach(function () {
     $this->seed([RoleSeeder::class, VehicleTypeSeeder::class]);
 });
 
-test('allows an admin to approve a submitted driver application', function () {
+test('approves a submitted driver application through the shared review service', function () {
     $admin = User::factory()->create();
     $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
     $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
-    Sanctum::actingAs($admin, ['*']);
-
     $driver = User::factory()->create(['password' => 'password123']);
     $vehicleType = VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail();
     $profile = DriverApplicationBuilder::submitted(
@@ -29,9 +28,7 @@ test('allows an admin to approve a submitted driver application', function () {
         [ServiceType::Delivery, ServiceType::Drive],
     );
 
-    $this->postJson("/api/v1/admin/driver-applications/{$profile->public_id}/approval")
-        ->assertOk()
-        ->assertJsonPath('data.review_status', DriverReviewStatus::Approved->value);
+    app(DriverReviewService::class)->approve($profile, $admin);
 
     $driverRoleId = Role::query()->where('key', RoleKey::Driver->value)->value('id');
     $this->assertDatabaseHas('user_roles', [
@@ -60,36 +57,37 @@ test('allows an admin to approve a submitted driver application', function () {
     ])->assertOk()->assertJsonStructure(['token']);
 });
 
-test('allows an admin to reject a submitted application with a reason', function () {
+test('rejects a submitted application through the shared review service', function () {
     $admin = User::factory()->create();
     $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
     $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
-    Sanctum::actingAs($admin, ['*']);
-
     $driver = User::factory()->create();
     $profile = DriverApplicationBuilder::submitted(
         $driver,
         VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail(),
     );
 
-    $this->postJson("/api/v1/admin/driver-applications/{$profile->public_id}/rejection", [
-        'reason_code' => 'DOCUMENT_UNREADABLE',
-    ])->assertOk()
-        ->assertJsonPath('data.review_status', DriverReviewStatus::Rejected->value)
-        ->assertJsonPath('data.review_reason_code', 'DOCUMENT_UNREADABLE');
+    $reviewed = app(DriverReviewService::class)->reject(
+        $profile,
+        $admin,
+        'DOCUMENT_UNREADABLE',
+    );
+
+    expect($reviewed->review_status)->toBe(DriverReviewStatus::Rejected)
+        ->and($reviewed->review_reason_code)->toBe('DOCUMENT_UNREADABLE');
 });
 
-test('forbids non admins from reviewing driver applications', function () {
-    $customer = User::factory()->create();
-    Sanctum::actingAs($customer, ['customer:*']);
-
+test('does not expose driver review through REST admin endpoints', function () {
+    $admin = User::factory()->create();
+    Sanctum::actingAs($admin, ['*']);
     $profile = DriverApplicationBuilder::submitted(
         User::factory()->create(),
         VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail(),
     );
 
+    $this->getJson('/api/v1/admin/driver-applications')->assertNotFound();
     $this->postJson("/api/v1/admin/driver-applications/{$profile->public_id}/approval")
-        ->assertForbidden();
+        ->assertNotFound();
 });
 
 test('rejects driver app login before approval', function () {
@@ -109,20 +107,14 @@ test('suspends an approved driver and blocks driver app login', function () {
     $admin = User::factory()->create();
     $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
     $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
-    Sanctum::actingAs($admin, ['*']);
-
     $driver = User::factory()->create(['password' => 'password123']);
     $profile = DriverApplicationBuilder::submitted(
         $driver,
         VehicleType::query()->where('unique_key', 'MOTORBIKE')->firstOrFail(),
     );
-    $this->postJson("/api/v1/admin/driver-applications/{$profile->public_id}/approval")
-        ->assertOk();
-
-    $this->postJson("/api/v1/admin/drivers/{$profile->public_id}/suspension", [
-        'reason_code' => 'SAFETY_REVIEW',
-    ])->assertOk()
-        ->assertJsonPath('data.review_status', DriverReviewStatus::Suspended->value);
+    $review = app(DriverReviewService::class);
+    $review->approve($profile, $admin);
+    $review->suspend($profile, $admin, 'SAFETY_REVIEW');
 
     $this->postJson('/api/v1/auth/login', [
         'phone' => $driver->phone,

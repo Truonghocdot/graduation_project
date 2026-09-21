@@ -36,6 +36,7 @@ Thư mục này mô tả luồng nghiệp vụ dự kiến cho ứng dụng đ�
 | - | [Decision log](./open-questions.md) | Toàn bộ quyết định phạm vi đã chốt |
 | - | [Thiết kế database](./database/README.md) | ERD, data dictionary, constraint, index và migration plan |
 | - | [Implementation phases](./implementation/README.md) | Thứ tự phát triển, phạm vi và tiêu chí hoàn tất từng phase |
+| - | [API Contract v1](./api/README.md) | Danh sách endpoint Phase 1/2, auth, request, response và lỗi |
 
 ## Phạm vi MVP
 

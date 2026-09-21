@@ -6,12 +6,14 @@ use App\Enums\DriverAvailabilityStatus;
 use App\Enums\DriverReviewStatus;
 use App\Enums\ReviewableStatus;
 use App\Enums\RoleKey;
+use App\Models\AuditLog;
 use App\Models\DriverProfile;
 use App\Models\LedgerAccount;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Wallet;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 
@@ -21,6 +23,7 @@ class DriverReviewService
     {
         return DB::transaction(function () use ($profile, $admin): DriverProfile {
             $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
+            $before = $this->auditSnapshot($profile);
 
             if ($profile->review_status !== DriverReviewStatus::PendingReview) {
                 $this->throwInvalidState();
@@ -66,6 +69,7 @@ class DriverReviewService
 
             $this->grantDriverRole($profile->user_id, $admin->id);
             $this->ensureWallet($profile->user_id);
+            $this->audit($profile, $admin, 'DRIVER_APPROVED', $before);
 
             return $this->load($profile);
         });
@@ -75,6 +79,7 @@ class DriverReviewService
     {
         return DB::transaction(function () use ($profile, $admin, $reasonCode): DriverProfile {
             $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
+            $before = $this->auditSnapshot($profile);
 
             if ($profile->review_status !== DriverReviewStatus::PendingReview) {
                 $this->throwInvalidState();
@@ -87,6 +92,7 @@ class DriverReviewService
                 'reviewed_by' => $admin->id,
                 'reviewed_at' => now(),
             ])->save();
+            $this->audit($profile, $admin, 'DRIVER_REJECTED', $before, $reasonCode);
 
             return $this->load($profile);
         });
@@ -96,6 +102,7 @@ class DriverReviewService
     {
         return DB::transaction(function () use ($profile, $admin, $reasonCode): DriverProfile {
             $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
+            $before = $this->auditSnapshot($profile);
 
             if ($profile->review_status !== DriverReviewStatus::Approved) {
                 $this->throwInvalidState();
@@ -110,6 +117,7 @@ class DriverReviewService
                 'offline_at' => now(),
             ])->save();
             $profile->capabilities()->update(['is_active' => false]);
+            $this->audit($profile, $admin, 'DRIVER_SUSPENDED', $before, $reasonCode);
 
             return $this->load($profile);
         });
@@ -166,6 +174,40 @@ class DriverReviewService
             'vehicles.documents.vehicle',
             'capabilities.vehicleType',
             'lastLocation',
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function auditSnapshot(DriverProfile $profile): array
+    {
+        return [
+            'review_status' => $profile->review_status->value,
+            'availability_status' => $profile->availability_status->value,
+            'review_reason_code' => $profile->review_reason_code,
+        ];
+    }
+
+    /** @param array<string, mixed> $before */
+    private function audit(
+        DriverProfile $profile,
+        User $admin,
+        string $action,
+        array $before,
+        ?string $reasonCode = null,
+    ): void {
+        AuditLog::query()->create([
+            'actor_user_id' => $admin->id,
+            'actor_role' => RoleKey::Admin->value,
+            'action' => $action,
+            'subject_type' => DriverProfile::class,
+            'subject_id' => $profile->id,
+            'before' => $before,
+            'after' => $this->auditSnapshot($profile),
+            'reason_code' => $reasonCode,
+            'ip_address' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+            'correlation_id' => (string) Str::uuid(),
+            'created_at' => now(),
         ]);
     }
 

@@ -1,9 +1,5 @@
 <?php
 
-use App\Http\Controllers\Api\V1\Admin\ApprovedDriverApplicationController;
-use App\Http\Controllers\Api\V1\Admin\DriverApplicationController as AdminDriverApplicationController;
-use App\Http\Controllers\Api\V1\Admin\RejectedDriverApplicationController;
-use App\Http\Controllers\Api\V1\Admin\SuspendedDriverController;
 use App\Http\Controllers\Api\V1\Auth\ForgotPasswordController;
 use App\Http\Controllers\Api\V1\Auth\LoginController;
 use App\Http\Controllers\Api\V1\Auth\LogoutController;
@@ -66,12 +62,5 @@ Route::prefix('v1')->group(function (): void {
             Route::put('driver/availability/offline', [AvailabilityController::class, 'offline']);
         });
 
-        Route::prefix('admin')->middleware('role:ADMIN')->group(function (): void {
-            Route::get('driver-applications', [AdminDriverApplicationController::class, 'index']);
-            Route::get('driver-applications/{driverApplication}', [AdminDriverApplicationController::class, 'show']);
-            Route::post('driver-applications/{driverApplication}/approval', ApprovedDriverApplicationController::class);
-            Route::post('driver-applications/{driverApplication}/rejection', RejectedDriverApplicationController::class);
-            Route::post('drivers/{driver}/suspension', SuspendedDriverController::class);
-        });
     });
 });
