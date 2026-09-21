@@ -101,11 +101,12 @@ Unique: `(user_id, device_id, app_type)`.
 | `id` | `BIGINT` | Không | PK | |
 | `public_id` | `UUID` | Không | UNIQUE | API ID |
 | `user_id` | `BIGINT` | Không | UNIQUE FK `users` | Một hồ sơ/user |
-| `review_status` | `VARCHAR(30)` | Không | `PENDING_REVIEW` | `PENDING_REVIEW`, `APPROVED`, `REJECTED`, `SUSPENDED` |
+| `review_status` | `VARCHAR(30)` | Không | `DRAFT` | `DRAFT`, `PENDING_REVIEW`, `APPROVED`, `REJECTED`, `SUSPENDED` |
 | `availability_status` | `VARCHAR(20)` | Không | `OFFLINE` | `OFFLINE`, `ONLINE`, `OFFERED`, `BUSY` |
 | `review_reason_code` | `VARCHAR(50)` | Có | | Lý do từ chối/khóa |
 | `reviewed_by` | `BIGINT` | Có | FK `users` | Admin |
 | `reviewed_at` | `TIMESTAMPTZ` | Có | | |
+| `submitted_at` | `TIMESTAMPTZ` | Có | | Lần gần nhất gửi xét duyệt |
 | `cod_limit` | `DOUBLE PRECISION` | Không | `0` | Hạn mức COD tài xế muốn nhận, tối đa theo setting |
 | `offer_count` | `INTEGER` | Không | `0` | Cache thống kê matching |
 | `accepted_offer_count` | `INTEGER` | Không | `0` | |
@@ -125,6 +126,7 @@ Eligibility nhận offer yêu cầu: `review_status = APPROVED`, `availability_s
 | Cột | Kiểu | Null | Key | Ý nghĩa |
 |---|---|---:|---|---|
 | `id` | `BIGINT` | Không | PK | |
+| `public_id` | `UUID` | Không | UNIQUE | API ID của giấy tờ |
 | `driver_profile_id` | `BIGINT` | Không | FK, INDEX | |
 | `vehicle_id` | `BIGINT` | Có | FK `vehicles`, INDEX | Bắt buộc cho giấy tờ/ảnh phương tiện |
 | `document_type` | `VARCHAR(40)` | Không | | `IDENTITY`, `DRIVER_LICENSE`, `VEHICLE_REGISTRATION`, `INSURANCE`, `PORTRAIT`, `VEHICLE_PHOTO` |
@@ -204,6 +206,7 @@ Không dùng bảng này để geo-search tải cao; Node.js cập nhật Redis 
 | Cột | Kiểu | Null | Key/default | Ý nghĩa |
 |---|---|---:|---|---|
 | `id` | `BIGINT` | Không | PK | |
+| `public_id` | `UUID` | Không | UNIQUE | API ID |
 | `driver_profile_id` | `BIGINT` | Không | FK, INDEX | |
 | `bank_code` | `VARCHAR(30)` | Không | | Mã ngân hàng |
 | `account_number_encrypted` | `TEXT` | Không | | Mã hóa ở application layer |

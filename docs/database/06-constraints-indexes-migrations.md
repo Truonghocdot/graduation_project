@@ -16,7 +16,7 @@ Các giá trị lưu dạng `VARCHAR`, được khai báo lại bằng PHP backe
 |---|---|---|
 | User | `UserStatus` | `PENDING_VERIFICATION`, `ACTIVE`, `SUSPENDED`, `CLOSED` |
 | Role | `RoleKey` | `CUSTOMER`, `DRIVER`, `SUPPORT`, `ADMIN` |
-| Driver | `DriverReviewStatus` | `PENDING_REVIEW`, `APPROVED`, `REJECTED`, `SUSPENDED` |
+| Driver | `DriverReviewStatus` | `DRAFT`, `PENDING_REVIEW`, `APPROVED`, `REJECTED`, `SUSPENDED` |
 | Driver | `DriverAvailability` | `OFFLINE`, `ONLINE`, `OFFERED`, `BUSY` |
 | Service | `ServiceType` | `DELIVERY`, `DRIVE` |
 | Service | `BookingType` | `NOW`, `SCHEDULED` |

@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->uuid('public_id')->unique();
             $table->foreignId('user_id')->unique()->constrained()->restrictOnDelete();
-            $table->string('review_status', 30)->default('PENDING_REVIEW');
+            $table->string('review_status', 30)->default('DRAFT');
             $table->string('availability_status', 20)->default('OFFLINE');
             $table->string('review_reason_code', 50)->nullable();
             $table->foreignId('reviewed_by')->nullable()->constrained('users')->nullOnDelete();

@@ -67,3 +67,14 @@ test('creates database guards for active assignments', function () {
         'assignments_one_active_per_driver',
     );
 });
+
+test('creates public driver resources and submission tracking', function () {
+    expect(Schema::hasColumns('driver_profiles', [
+        'public_id',
+        'review_status',
+        'availability_status',
+        'submitted_at',
+    ]))->toBeTrue()
+        ->and(Schema::hasColumns('driver_documents', ['public_id', 'driver_profile_id']))->toBeTrue()
+        ->and(Schema::hasColumns('driver_bank_accounts', ['public_id', 'driver_profile_id']))->toBeTrue();
+});
