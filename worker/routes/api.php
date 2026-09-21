@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\V1\Driver\DocumentFileController;
 use App\Http\Controllers\Api\V1\Driver\SelectedVehicleController;
 use App\Http\Controllers\Api\V1\Driver\VehicleController;
 use App\Http\Controllers\Api\V1\MeController;
+use App\Http\Controllers\Api\V1\QuoteController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -45,6 +46,8 @@ Route::prefix('v1')->group(function (): void {
 
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::get('catalog/vehicle-types', VehicleTypeController::class);
+        Route::post('quotes', QuoteController::class)
+            ->middleware('throttle:quotes');
 
         Route::get('driver/application', [DriverApplicationController::class, 'show']);
         Route::post('driver/application', [DriverApplicationController::class, 'store']);

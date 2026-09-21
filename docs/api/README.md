@@ -2,9 +2,9 @@
 
 > Base path: `/api/v1`
 >
-> Trạng thái: **Implemented cho Phase 1 và Phase 2**
+> Trạng thái: **Implemented cho Phase 1, Phase 2 và Phase 3**
 
-Tài liệu này mô tả các API đang có trong `worker/routes/api.php`. Các endpoint Delivery/Drive, quote, matching, wallet payment và realtime nghiệp vụ chưa nằm trong danh sách này; chúng sẽ được bổ sung theo implementation phase tương ứng.
+Tài liệu này mô tả các API đang có trong `worker/routes/api.php`. Phase 3 bổ sung endpoint quote dùng cho cả Delivery và Drive; endpoint tạo đơn, matching, wallet payment và realtime nghiệp vụ vẫn thuộc các phase sau.
 
 Nghiệp vụ quản trị không mở REST API. Admin đăng nhập và thao tác tại Filament `/admin`; Filament gọi trực tiếp domain service trong worker để duyệt/từ chối/khóa tài xế và ghi audit.
 
@@ -41,7 +41,7 @@ Các response đặc biệt:
 - Đăng nhập/xác minh phone: `data`, `token`, `token_type`.
 - Logout/reset password: `204 No Content`.
 - Forgot/resend OTP: `202 Accepted` với message trung tính.
-- Danh sách admin dùng Laravel pagination: `data`, `links`, `meta`.
+- Các danh sách resource dùng Laravel pagination: `data`, `links`, `meta`.
 
 Validation lỗi dùng HTTP `422`:
 
@@ -93,6 +93,7 @@ Các status thường gặp:
 | `PUT` | `/driver/vehicles/{vehicle}/selected` | `auth:sanctum` + owner | 2 |
 | `PUT` | `/driver/availability/online` | `auth:sanctum` + `role:DRIVER` | 2 |
 | `PUT` | `/driver/availability/offline` | `auth:sanctum` + `role:DRIVER` | 2 |
+| `POST` | `/quotes` | `auth:sanctum` + `quotes` throttle | 3 |
 
 ## Phase 1 - Authentication
 
@@ -398,6 +399,36 @@ Chỉ `DRIVER`. Driver đang `BUSY` hoặc có assignment active không được
 ```bash
 php artisan app:create-admin-user 0901234567 --name="Administrator"
 ```
+
+## Phase 3 - Quote, Goong và Pricing
+
+### `POST /quotes`
+
+Tạo quote bất biến có thời hạn cho `DELIVERY` hoặc `DRIVE`. Endpoint kiểm tra điểm lấy/giao trong service area đang active, gọi MapProvider (Goong ở runtime), lấy pricing rule hiện hành và chỉ preview voucher; voucher chưa được redemption cho tới Phase 4 tạo đơn.
+
+Request Delivery:
+
+```json
+{
+  "service_type": "DELIVERY",
+  "vehicle_type_id": "vehicle-type-public-uuid",
+  "booking_type": "NOW",
+  "pickup": {"address": "1 Nguyen Hue", "latitude": 10.773, "longitude": 106.704},
+  "dropoff": {"address": "1 Vo Van Tan", "latitude": 10.780, "longitude": 106.690},
+  "service_payload": {"goods_type": "GENERAL", "weight_kg": 5},
+  "voucher_code": "SAVE5K"
+}
+```
+
+`DRIVE` dùng `service_payload.passenger_count`; `DELIVERY` dùng `goods_type`, trọng lượng/kích thước và COD tùy chọn. `SCHEDULED` bắt buộc `scheduled_at` ở tương lai.
+
+Response `201` trả `data.id`, pickup/dropoff snapshot, route snapshot (`provider`, distance, duration, polyline/metadata), pricing breakdown (`gross_fare`, `voucher_discount`, `customer_payable`, `driver_rate`, `currency`), `status = ACTIVE` và `expires_at`.
+
+Các lỗi riêng:
+
+- `422`: thiếu pricing rule, ngoài service area, voucher không hợp lệ, quá tải/sức chứa hoặc payload sai service type.
+- `503 MAP_ROUTE_UNAVAILABLE`: Goong timeout, lỗi upstream hoặc response route không hợp lệ; không tạo quote.
+- Endpoint bị giới hạn `30 requests/phút/user` bằng limiter `quotes`.
 
 ## Client integration checklist
 

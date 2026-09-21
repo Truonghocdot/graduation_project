@@ -35,4 +35,19 @@ return [
         ],
     ],
 
+    'goong' => [
+        'base_url' => env('GOONG_BASE_URL', 'https://rsapi.goong.io'),
+        'api_key' => env('GOONG_API_KEY'),
+        'connect_timeout_seconds' => (int) env('GOONG_CONNECT_TIMEOUT_SECONDS', 3),
+        'timeout_seconds' => (int) env('GOONG_TIMEOUT_SECONDS', 8),
+        'retry_times' => (int) env('GOONG_RETRY_TIMES', 2),
+        'retry_delay_milliseconds' => (int) env('GOONG_RETRY_DELAY_MILLISECONDS', 200),
+        'cache_ttl_seconds' => (int) env('GOONG_ROUTE_CACHE_TTL_SECONDS', 300),
+        'vehicle_mapping' => [
+            'MOTORBIKE' => 'bike',
+            'CAR_4_SEAT' => 'car',
+            'CAR_7_SEAT' => 'car',
+        ],
+    ],
+
 ];

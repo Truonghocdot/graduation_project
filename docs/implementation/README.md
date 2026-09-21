@@ -34,7 +34,7 @@ Không viết nghiệp vụ độc lập trong `service`, client hoặc driver a
 | 0 | `COMPLETED` | Business docs, database docs, migrations và seed nền |
 | 1 | `COMPLETED` | Phone auth, OTP, Sanctum, role, device, reset password |
 | 2 | `COMPLETED` | Driver onboarding API và Filament admin review/catalog đã hoàn tất |
-| 3 | `PENDING` | Catalog, Goong adapter, service area, pricing và quote |
+| 3 | `COMPLETED` | Catalog, Goong adapter, service area, pricing và quote |
 | 4 | `PENDING` | Tạo Delivery/Drive request, lịch, payer, wallet debit, voucher |
 | 5 | `PENDING` | Matching, offer, assignment, Redis GEO và realtime service |
 | 6 | `PENDING` | Delivery/Drive execution và bằng chứng hoàn tất |
@@ -103,8 +103,8 @@ Không viết nghiệp vụ độc lập trong `service`, client hoặc driver a
 | Draft/application/document/vehicle | `app/Services/Driver/DriverOnboardingService.php` |
 | Approve/reject/suspend + role/wallet | `app/Services/Driver/DriverReviewService.php` |
 | Online/offline eligibility | `app/Services/Driver/DriverAvailabilityService.php` |
-| API controllers | `app/Http/Controllers/Api/V1/Driver/`, `Admin/`, `Catalog/` |
-| Request/resource/middleware | `app/Http/Requests/Api/V1/Driver/`, `Admin/`, `app/Http/Resources/`, `EnsureUserHasRole` |
+| API controllers | `app/Http/Controllers/Api/V1/Driver/`, `Catalog/`, `QuoteController.php` |
+| Request/resource/middleware | `app/Http/Requests/Api/V1/Driver/`, `Quote/`, `app/Http/Resources/`, `EnsureUserHasRole` |
 | Tests | `tests/Feature/DriverOnboardingTest.php`, `AdminDriverReviewTest.php`, `DriverAvailabilityTest.php` |
 
 ### Filament code đã triển khai
@@ -131,31 +131,31 @@ Filament action không được tự `DB::table(...)->update()` để bỏ qua d
 - Hồ sơ/document/vehicle của user khác trả `404`.
 - Admin REST API không được mở; nghiệp vụ quản trị chỉ đi qua Filament và domain service.
 
-## 6. Phase 3 - Catalog, Goong và Pricing
+## 6. Phase 3 - Catalog, Goong và Pricing — `COMPLETED`
 
 ### Worker
 
 - `app/Contracts/Maps/MapProvider.php`, `app/Services/Maps/GoongMapProvider.php`.
 - Config Goong trong `config/services.php`, secrets trong `.env`, timeout/retry/cache.
 - `PricingService`: base distance, minimum fare, extra km, driver rate, VND rounding.
-- Quote API/resource, service area validation và snapshot route/pricing.
-- Tests dùng fake map provider, không gọi Goong thật.
+- `POST /api/v1/quotes` và `QuoteResource`: service area validation, vehicle capacity, voucher preview, route/pricing snapshot.
+- Tests dùng fake map provider, không gọi Goong thật; lỗi upstream trả `MAP_ROUTE_UNAVAILABLE`.
 
 ### Filament
 
-- `PricingRuleResource`, `ServiceAreaResource`, `SystemSetting` pricing tab.
+- `PricingRuleResource`, `ServiceAreaResource`, `SystemSetting` pricing tab đã triển khai.
 - Effective date/version, không sửa rule đã được quote sử dụng.
 - Preview quote bằng service dùng chung, audit mọi thay đổi.
 
 ### Service/mobile
 
-- Chưa cần business socket.
-- Client/driver chưa hiển thị quote cho đến khi contract có fixture/test.
+- Chưa cần business socket trong phase này.
+- Client/driver chưa tích hợp UI quote; API contract và fixture/test đã sẵn sàng cho Phase 4.
 
 ### Gate
 
 - Fake Goong -> route snapshot -> quote đúng.
-- Giá xe máy/ô tô, extra km, voucher preview và float tolerance có test.
+- Giá xe máy/ô tô, extra km, voucher preview, service area, capacity, timeout và float tolerance có test.
 
 ## 7. Phase 4 - Request và Payment Intent
 

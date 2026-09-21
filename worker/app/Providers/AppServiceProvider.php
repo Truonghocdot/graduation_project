@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Contracts\Auth\PhoneOtpSender;
+use App\Contracts\Maps\MapProvider;
 use App\Services\Auth\DevelopmentPhoneOtpSender;
+use App\Services\Maps\GoongMapProvider;
 use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -23,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(PhoneOtpSender::class, DevelopmentPhoneOtpSender::class);
+        $this->app->bind(MapProvider::class, GoongMapProvider::class);
     }
 
     /**
@@ -60,6 +63,12 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('auth-otp', function (Request $request): Limit {
             return Limit::perMinute(5)->by($this->authenticationRateLimitKey($request));
+        });
+
+        RateLimiter::for('quotes', function (Request $request): Limit {
+            return Limit::perMinute(30)->by(
+                (string) ($request->user()?->getAuthIdentifier() ?? $request->ip()),
+            );
         });
     }
 

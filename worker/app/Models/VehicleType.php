@@ -2,7 +2,9 @@
 
 namespace App\Models;
 
+use Database\Factories\VehicleTypeFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -32,7 +34,8 @@ use Illuminate\Support\Str;
 ])]
 class VehicleType extends Model
 {
-    use SoftDeletes;
+    /** @use HasFactory<VehicleTypeFactory> */
+    use HasFactory, SoftDeletes;
 
     protected static function booted(): void
     {
@@ -50,6 +53,12 @@ class VehicleType extends Model
     public function vehicles(): HasMany
     {
         return $this->hasMany(Vehicle::class);
+    }
+
+    /** @return HasMany<PricingRule, $this> */
+    public function pricingRules(): HasMany
+    {
+        return $this->hasMany(PricingRule::class);
     }
 
     /** @return array<string, string> */
