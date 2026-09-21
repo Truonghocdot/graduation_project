@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
@@ -78,6 +79,18 @@ class Payment extends Model
     public function discountTransaction(): HasOne
     {
         return $this->hasOne(DiscountTransaction::class);
+    }
+
+    /** @return HasOne<Settlement, $this> */
+    public function settlement(): HasOne
+    {
+        return $this->hasOne(Settlement::class);
+    }
+
+    /** @return HasMany<Refund, $this> */
+    public function refunds(): HasMany
+    {
+        return $this->hasMany(Refund::class);
     }
 
     /** @return array<string, string> */

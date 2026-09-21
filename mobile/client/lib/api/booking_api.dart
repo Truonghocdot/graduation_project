@@ -158,6 +158,7 @@ class ServiceRequestSummary {
     required this.status,
     required this.paymentMethod,
     required this.customerPayable,
+    this.driverNetEarning,
   });
 
   final String id;
@@ -165,9 +166,11 @@ class ServiceRequestSummary {
   final String status;
   final PaymentChoice paymentMethod;
   final double customerPayable;
+  final double? driverNetEarning;
 
   factory ServiceRequestSummary.fromJson(Map<String, dynamic> json) {
     final payment = json['payment'] as Map<String, dynamic>;
+    final settlement = payment['settlement'];
 
     return ServiceRequestSummary(
       id: json['id'] as String,
@@ -179,6 +182,61 @@ class ServiceRequestSummary {
           ? PaymentChoice.wallet
           : PaymentChoice.cash,
       customerPayable: (payment['customer_payable'] as num).toDouble(),
+      driverNetEarning: settlement is Map<String, dynamic>
+          ? (settlement['driver_net_earning'] as num?)?.toDouble()
+          : null,
+    );
+  }
+}
+
+class WalletSummary {
+  const WalletSummary({
+    required this.id,
+    required this.balance,
+    required this.reserved,
+    required this.available,
+    required this.currency,
+  });
+
+  final String id;
+  final double balance;
+  final double reserved;
+  final double available;
+  final String currency;
+
+  factory WalletSummary.fromJson(Map<String, dynamic> json) {
+    return WalletSummary(
+      id: json['id'] as String,
+      balance: (json['balance'] as num).toDouble(),
+      reserved: (json['reserved_withdrawal_amount'] as num).toDouble(),
+      available: (json['available_balance'] as num).toDouble(),
+      currency: json['currency'] as String,
+    );
+  }
+}
+
+class WalletTopupSummary {
+  const WalletTopupSummary({
+    required this.id,
+    required this.amount,
+    required this.status,
+    required this.reference,
+    required this.vietQrPayload,
+  });
+
+  final String id;
+  final double amount;
+  final String status;
+  final String reference;
+  final String vietQrPayload;
+
+  factory WalletTopupSummary.fromJson(Map<String, dynamic> json) {
+    return WalletTopupSummary(
+      id: json['id'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      status: json['status'] as String,
+      reference: json['vietqr_reference'] as String,
+      vietQrPayload: json['vietqr_payload'] as String,
     );
   }
 }
@@ -208,6 +266,19 @@ abstract interface class BookingGateway {
     required ServiceRequestSummary serviceRequest,
     required String idempotencyKey,
     required String reasonCode,
+  });
+
+  Future<ServiceRequestSummary> loadServiceRequest(
+    BookingSession session,
+    String serviceRequestId,
+  );
+
+  Future<WalletSummary> loadWallet(BookingSession session);
+
+  Future<WalletTopupSummary> createTopup({
+    required BookingSession session,
+    required double amount,
+    required String idempotencyKey,
   });
 }
 
@@ -339,6 +410,48 @@ class BookingApi implements BookingGateway {
     );
 
     return ServiceRequestSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<ServiceRequestSummary> loadServiceRequest(
+    BookingSession session,
+    String serviceRequestId,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/service-requests/$serviceRequestId'),
+      token: session.token,
+    );
+
+    return ServiceRequestSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<WalletSummary> loadWallet(BookingSession session) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/wallet'),
+      token: session.token,
+    );
+
+    return WalletSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<WalletTopupSummary> createTopup({
+    required BookingSession session,
+    required double amount,
+    required String idempotencyKey,
+  }) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, '/wallet/topups'),
+      token: session.token,
+      headers: {'Idempotency-Key': idempotencyKey},
+      body: {'amount': amount},
+    );
+
+    return WalletTopupSummary.fromJson(_data(response));
   }
 
   Uri _uri(BookingSession session, String path) {

@@ -6,7 +6,13 @@ use App\Enums\PayerType;
 use App\Enums\PaymentMethod;
 use App\Enums\ServiceRequestStatus;
 use App\Enums\ServiceType;
+use App\Models\ServiceRequest;
+use App\Models\User;
+use App\Services\Matching\MatchingAdminService;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -63,7 +69,55 @@ class ServiceRequestsTable
                 Filter::make('scheduled')
                     ->query(fn (Builder $query): Builder => $query->whereNotNull('scheduled_at')),
             ])
-            ->recordActions([ViewAction::make()])
+            ->recordActions([
+                ViewAction::make(),
+                Action::make('restartMatching')
+                    ->label('Restart matching')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->form([
+                        TextInput::make('reason_code')->required()->maxLength(50),
+                    ])
+                    ->visible(fn (ServiceRequest $record): bool => in_array($record->status, [
+                        ServiceRequestStatus::Assigned,
+                        ServiceRequestStatus::SearchingDriver,
+                        ServiceRequestStatus::DriverArriving,
+                        ServiceRequestStatus::DriverArrivingPickup,
+                    ], true))
+                    ->action(function (ServiceRequest $record, array $data, MatchingAdminService $service): void {
+                        $service->restart($record, self::admin(), $data['reason_code']);
+                        Notification::make()->title('Matching restarted')->success()->send();
+                    }),
+                Action::make('cancel')
+                    ->label('Cancel')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->form([
+                        TextInput::make('reason_code')->required()->maxLength(50),
+                    ])
+                    ->visible(fn (ServiceRequest $record): bool => in_array($record->status, [
+                        ServiceRequestStatus::Scheduled,
+                        ServiceRequestStatus::SearchingDriver,
+                        ServiceRequestStatus::Assigned,
+                        ServiceRequestStatus::DriverArriving,
+                        ServiceRequestStatus::DriverArrivingPickup,
+                        ServiceRequestStatus::DriverArrived,
+                        ServiceRequestStatus::AtPickup,
+                    ], true))
+                    ->action(function (ServiceRequest $record, array $data, MatchingAdminService $service): void {
+                        $service->cancel($record, self::admin(), $data['reason_code']);
+                        Notification::make()->title('Service request cancelled')->success()->send();
+                    }),
+            ])
             ->toolbarActions([]);
+    }
+
+    private static function admin(): User
+    {
+        $user = auth()->user();
+        abort_unless($user instanceof User, 403);
+
+        return $user;
     }
 }

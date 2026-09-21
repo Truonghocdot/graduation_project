@@ -1,30 +1,138 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
+import 'package:driver/api/driver_api.dart';
+import 'package:driver/main.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:driver/main.dart';
-
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('logs in lists and accepts an offer', (tester) async {
+    final gateway = FakeDriverGateway();
+    await tester.pumpWidget(
+      DriverApp(
+        gateway: gateway,
+        initialSession: const DriverSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: '',
+        ),
+      ),
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Số điện thoại'),
+      '0901234567',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextField, 'Mật khẩu'),
+      'password',
+    );
+    await tester.tap(find.byKey(const Key('driver-login-button')));
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    expect(find.text('DELIVERY'), findsOneWidget);
+    expect(find.text('Nhận chuyến'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('accept-offer-1')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('ACCEPTED'), findsOneWidget);
+    expect(gateway.respondCalls, 1);
   });
+}
+
+class FakeDriverGateway implements DriverGateway {
+  int respondCalls = 0;
+
+  @override
+  Future<String> login({
+    required String baseUrl,
+    required String phone,
+    required String password,
+  }) async {
+    return 'driver-token';
+  }
+
+  @override
+  Future<List<DriverOfferSummary>> loadOffers(DriverSession session) async {
+    return [
+      DriverOfferSummary(
+        id: 'offer-1',
+        status: 'PENDING',
+        serviceType: 'DELIVERY',
+        serviceRequestId: 'request-1',
+        serviceStatus: 'DRIVER_ARRIVING_PICKUP',
+        paymentMethod: 'CASH',
+        customerPayable: 18000,
+        pickupDistanceMeters: 500,
+        estimatedEarning: 15000,
+        expiresAt: DateTime.now().add(const Duration(seconds: 30)),
+        pickupLatitude: 10.77,
+        pickupLongitude: 106.68,
+        dropoffLatitude: 10.78,
+        dropoffLongitude: 106.69,
+      ),
+    ];
+  }
+
+  @override
+  Future<DriverOfferSummary> respond({
+    required DriverSession session,
+    required DriverOfferSummary offer,
+    required String action,
+    required String idempotencyKey,
+  }) async {
+    respondCalls++;
+    return DriverOfferSummary(
+      id: offer.id,
+      status: action == 'accept' ? 'ACCEPTED' : 'DECLINED',
+      serviceType: offer.serviceType,
+      serviceRequestId: offer.serviceRequestId,
+      serviceStatus: offer.serviceStatus,
+      paymentMethod: offer.paymentMethod,
+      customerPayable: offer.customerPayable,
+      pickupDistanceMeters: offer.pickupDistanceMeters,
+      estimatedEarning: offer.estimatedEarning,
+      expiresAt: offer.expiresAt,
+      pickupLatitude: offer.pickupLatitude,
+      pickupLongitude: offer.pickupLongitude,
+      dropoffLatitude: offer.dropoffLatitude,
+      dropoffLongitude: offer.dropoffLongitude,
+    );
+  }
+
+  @override
+  Future<String> transition({
+    required DriverSession session,
+    required DriverOfferSummary offer,
+    required String action,
+    required double latitude,
+    required double longitude,
+    required String idempotencyKey,
+    double? cashCollected,
+    double? codCollected,
+  }) async {
+    return offer.serviceStatus;
+  }
+
+  @override
+  Future<DriverWalletSummary> loadWallet(DriverSession session) async {
+    return const DriverWalletSummary(
+      balance: 100000,
+      reserved: 0,
+      available: 100000,
+    );
+  }
+
+  @override
+  Future<List<DriverBankAccountSummary>> loadBankAccounts(
+    DriverSession session,
+  ) async {
+    return const [];
+  }
+
+  @override
+  Future<void> requestWithdrawal({
+    required DriverSession session,
+    required String bankAccountId,
+    required double amount,
+    required String idempotencyKey,
+  }) async {}
 }

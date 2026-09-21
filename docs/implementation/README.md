@@ -36,9 +36,9 @@ Không viết nghiệp vụ độc lập trong `service`, client hoặc driver a
 | 2 | `COMPLETED` | Driver onboarding API và Filament admin review/catalog đã hoàn tất |
 | 3 | `COMPLETED` | Catalog, Goong adapter, service area, pricing và quote |
 | 4 | `COMPLETED` | Delivery/Drive request, lịch, payer, payment intent, cancellation và customer app |
-| 5 | `PENDING` | Matching, offer, assignment, Redis GEO và realtime service |
-| 6 | `PENDING` | Delivery/Drive execution và bằng chứng hoàn tất |
-| 7 | `PENDING` | Settlement, top-up SePay, withdrawal, refund, COD reconciliation |
+| 5 | `COMPLETED` | Matching, offer, assignment, Redis GEO, realtime service và mobile offer flow |
+| 6 | `COMPLETED` | Delivery/Drive execution, private evidence, COD và location snapshot |
+| 7 | `COMPLETED` | Settlement, SePay top-up, withdrawal, refund và finance admin |
 | 8 | `PENDING` | Support, rating, incident, chat, notification và admin operations |
 | 9 | `PENDING` | Customer app integration |
 | 10 | `PENDING` | Driver app integration |
@@ -183,18 +183,21 @@ Filament action không được tự `DB::table(...)->update()` để bỏ qua d
 - Wallet debit atomic/cân bằng, voucher usage idempotent, CASH không debit.
 - Schedule state, owner isolation, cancellation refund/restore và outbox test pass.
 
-## 8. Phase 5 - Matching và Realtime
+## 8. Phase 5 - Matching và Realtime — `COMPLETED`
 
 ### Worker
 
-- Matching command/job, offer batch, lock assignment, optimistic version.
-- Outbox events: `OFFER_CREATED`, `OFFER_EXPIRED`, `DRIVER_ASSIGNED`, state changes.
-- Redis GEO/presence interface và RabbitMQ message contract.
+- Commands `matching:dispatch`, `matching:expire-offers` và `outbox:publish` đã triển khai, được scheduler chạy mỗi 5s/10s/1s.
+- `matching:dispatch` kích hoạt request `SCHEDULED` đến hạn trước khi tạo offer batch.
+- Offer batch lọc theo presence, capability, vehicle, status và COD; accept khóa request trước khi tạo assignment.
+- Outbox events: `OFFER_CREATED`, `OFFER_EXPIRED`, `DRIVER_ASSIGNED`, matching restart/cancel.
+- Redis GEO/presence interface, TTL và event envelope cho Redis Pub/Sub/RabbitMQ.
+- Driver offer API và customer snapshot API là nguồn khôi phục state sau reconnect.
 
 ### Filament
 
-- `MatchingMonitorPage`: request đang search, batch, offer outcome, assignment.
-- Admin reassign/cancel là action có policy, transaction và audit.
+- `MatchingMonitor` đã triển khai cho request đang search/assigned, batch, offer count và assignment.
+- Admin restart matching/cancel là Filament action có reason, transaction và audit.
 
 ### Service code
 
@@ -207,75 +210,79 @@ Filament action không được tự `DB::table(...)->update()` để bỏ qua d
 | Event envelope/schema | `service/src/contracts/` |
 | Unit/integration tests | `service/src/**/*.test.ts` hoặc `service/test/` |
 
-Service nhận event từ worker, phát room event, cập nhật presence/location TTL và trả ACK. Nó không tạo assignment hoặc quyết định winner.
+Service đã có health endpoint, Redis/RabbitMQ consumer, Socket.IO room authorization và event dedupe/version guard. Nó không tạo assignment hoặc quyết định winner.
 
 ### Client/driver
 
-- Customer app subscribe booking room.
-- Driver app nhận offer, accept/decline qua HTTPS API; Socket chỉ hiển thị offer/expiry.
-- Cả hai reconnect bằng snapshot API nếu mất event.
+- Customer app refresh snapshot từ worker sau khi tạo request.
+- Driver app login, lấy offer và accept/decline qua HTTPS API có idempotency; polling là reconnect fallback.
+- Socket service chỉ phát push event/expiry; state cuối lấy từ worker API.
 
 ### Gate
 
-- Hai driver accept đồng thời chỉ có một assignment.
-- Event duplicate/out-of-order không làm UI lùi state.
-- Reconnect và unauthorized room test pass.
+- Request row lock và partial unique index bảo đảm chỉ một assignment active.
+- Event duplicate/out-of-order không phát lại hoặc làm UI lùi state.
+- Reconnect snapshot, offer ownership và unauthorized room tests pass.
 
-## 9. Phase 6 - Delivery/Drive Execution
+## 9. Phase 6 - Delivery/Drive Execution — `COMPLETED`
 
 ### Worker
 
-- Delivery: arriving pickup, pickup proof, in delivery, delivered, return revision, COD ledger.
-- Drive: arriving, arrived, start, destination revision, complete.
-- Complete command idempotent; payment/settlement chuyển phase 7.
-- Evidence private storage và incident state.
+- Delivery state machine: arriving pickup, at pickup, picked up, in delivery và delivered.
+- Drive state machine: arriving, arrived, in trip và trip ended.
+- Transition command idempotent, kiểm tra assigned driver, thứ tự state và geofence/reason.
+- Evidence lưu private kèm checksum/metadata; owner, assigned driver và admin mới tải được.
+- COD advance/collection dùng ledger nghiệp vụ riêng, không tính vào driver earning.
+- Location endpoint chỉ lưu snapshot cuối PostgreSQL và phát Redis location event.
 
 ### Filament
 
-- Live operations board cho request/assignment/incident.
-- Manual intervention actions gọi service, bắt reason, audit.
-- Không expose private evidence bằng public URL.
+- Live operations board hiển thị request/assignment/evidence/payment.
+- Manual restart/cancel gọi service, bắt reason và audit.
+- Evidence chỉ mở qua authenticated download action.
 
 ### Service
 
-- Location ingest 1,5 giây, chỉ snapshot cuối PostgreSQL + Redis TTL.
-- Booking room location/ETA, push fallback, chat room nếu phase 8 đã sẵn sàng.
+- Realtime service nhận `worker.location` và phát vào đúng booking room.
+- Chỉ snapshot cuối được persist; không tạo timeline vị trí.
 
 ### Client/driver
 
-- Customer app: tracking, cancel, delivery/ride status, evidence view.
-- Driver app: navigation state, pickup/arrive/start/complete, cash confirmation, COD.
+- Customer app polling authoritative snapshot, hiển thị trạng thái và receipt settlement.
+- Driver app có action theo state, cash/COD confirmation và polling fallback.
 
 ### Gate
 
-- State transition hợp lệ và không skip state.
-- Giao/chuyến hoàn tất tạo đúng evidence/payment event.
+- State transition không skip state; command lặp không tạo history/settlement trùng.
+- Delivery proof policy, private evidence, geofence reason, cash và COD có test.
 
-## 10. Phase 7 - Settlement và Finance
+## 10. Phase 7 - Settlement và Finance — `COMPLETED`
 
 ### Worker
 
-- Settlement service: wallet/cash, driver rate, platform fee, voucher payment breakdown.
-- SePay VietQR webhook, top-up dedup, wallet ledger.
-- Withdrawal manual, refund/reversal, COD reconciliation.
+- Settlement atomic cho WALLET/CASH: driver rate, platform fee, wallet/cash/voucher breakdown.
+- Voucher chỉ nằm trong settlement breakdown, không tạo wallet credit.
+- VietQR top-up request và SePay webhook secret/dedup đã triển khai.
+- Withdrawal reserve/complete/reject và refund WALLET/CASH_MANUAL đã triển khai.
+- Mọi ledger transaction `POSTED` được kiểm tra debit = credit.
 
 ### Filament
 
-- Wallet/ledger read-only explorer.
-- Settlement/withdrawal/refund approval actions.
-- Không sửa balance trực tiếp; mọi adjustment tạo ledger transaction và audit.
+- Wallet/ledger, payment và settlement resources read-only.
+- Withdrawal complete/reject, refund và bank-account verification gọi domain service có audit.
+- Không có form sửa balance trực tiếp.
 
 ### Service/mobile
 
-- Service chỉ broadcast payment status sau outbox commit.
-- Customer app: top-up, wallet balance, voucher, receipt.
-- Driver app: earnings, negative wallet block, withdrawal request/status.
+- Service broadcast payment/top-up/withdrawal/refund sau outbox commit.
+- Customer app có wallet balance, top-up VietQR và settlement receipt.
+- Driver app có earning wallet và withdrawal request với tài khoản đã admin verify.
 
 ### Gate
 
-- Ledger debit/credit cân bằng.
-- Webhook/settlement/refund/withdrawal idempotent.
-- Voucher không tạo wallet credit.
+- Ledger debit/credit cân bằng và wallet cache khớp entry cuối.
+- Webhook, settlement, top-up, withdrawal và refund có test idempotency/limit.
+- Voucher không tạo wallet credit; COD không đi vào settlement earning.
 
 ## 11. Phase 8 - Support và Admin Operations
 

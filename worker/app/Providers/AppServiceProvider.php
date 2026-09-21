@@ -4,8 +4,14 @@ namespace App\Providers;
 
 use App\Contracts\Auth\PhoneOtpSender;
 use App\Contracts\Maps\MapProvider;
+use App\Contracts\Matching\DriverPresenceStore;
+use App\Contracts\Realtime\LocationPublisher;
 use App\Services\Auth\DevelopmentPhoneOtpSender;
+use App\Services\Execution\NullLocationPublisher;
+use App\Services\Execution\RedisLocationPublisher;
 use App\Services\Maps\GoongMapProvider;
+use App\Services\Matching\NullDriverPresenceStore;
+use App\Services\Matching\RedisDriverPresenceStore;
 use App\Support\PhoneNumber;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -26,6 +32,18 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(PhoneOtpSender::class, DevelopmentPhoneOtpSender::class);
         $this->app->bind(MapProvider::class, GoongMapProvider::class);
+        $this->app->bind(
+            DriverPresenceStore::class,
+            app()->environment('testing')
+                ? NullDriverPresenceStore::class
+                : RedisDriverPresenceStore::class,
+        );
+        $this->app->bind(
+            LocationPublisher::class,
+            app()->environment('testing')
+                ? NullLocationPublisher::class
+                : RedisLocationPublisher::class,
+        );
     }
 
     /**

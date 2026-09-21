@@ -21,6 +21,7 @@ test('creates the documented domain tables', function () {
         'cod_accounts',
         'support_tickets',
         'outbox_events',
+        'service_evidences',
     ];
 
     $missingTables = collect($tables)

@@ -2,6 +2,7 @@
 
 namespace App\Services\Driver;
 
+use App\Contracts\Matching\DriverPresenceStore;
 use App\Enums\DriverAvailabilityStatus;
 use App\Enums\DriverDocumentType;
 use App\Enums\DriverReviewStatus;
@@ -15,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class DriverAvailabilityService
 {
+    public function __construct(private readonly DriverPresenceStore $presenceStore) {}
+
     private const REQUIRED_DOCUMENTS = [
         DriverDocumentType::Identity,
         DriverDocumentType::DriverLicense,
@@ -98,11 +101,20 @@ class DriverAvailabilityService
                 ],
             );
 
+            $this->presenceStore->markOnline(
+                $profile->id,
+                $requestedServices->values()->all(),
+                (float) $attributes['latitude'],
+                (float) $attributes['longitude'],
+                (int) config('matching.presence_ttl_seconds', 15),
+            );
+
             $profile->forceFill([
                 'availability_status' => DriverAvailabilityStatus::Online,
                 'online_at' => now(),
                 'offline_at' => null,
             ])->save();
+            $this->presenceStore->markOffline($profile->id);
 
             return $this->load($profile);
         });

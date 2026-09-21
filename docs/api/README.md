@@ -2,7 +2,7 @@
 
 > Base path: `/api/v1`
 >
-> Trạng thái: **Implemented cho Phase 1, Phase 2, Phase 3 và Phase 4**
+> Trạng thái: **Implemented cho Phase 1 đến Phase 7**
 
 Tài liệu này mô tả các API đang có trong `worker/routes/api.php`. Phase 3 bổ sung quote và Phase 4 bổ sung tạo/hủy Delivery/Drive cùng payment intent; matching, settlement và realtime nghiệp vụ vẫn thuộc các phase sau.
 
@@ -98,6 +98,18 @@ Các status thường gặp:
 | `POST` | `/delivery/orders` | `auth:sanctum` + `Idempotency-Key` | 4 |
 | `POST` | `/rides/bookings` | `auth:sanctum` + `Idempotency-Key` | 4 |
 | `POST` | `/service-requests/{serviceRequest}/cancel` | `auth:sanctum` + owner + `Idempotency-Key` | 4 |
+| `GET` | `/service-requests/{serviceRequest}` | `auth:sanctum` + owner | 5 |
+| `GET` | `/driver/offers` | `auth:sanctum` + `role:DRIVER` | 5 |
+| `POST` | `/driver/offers/{driverOffer}/respond` | `auth:sanctum` + owner + `Idempotency-Key` | 5 |
+| `PUT` | `/driver/location` | `auth:sanctum` + `role:DRIVER` | 6 |
+| `POST` | `/driver/service-requests/{serviceRequest}/evidence` | `auth:sanctum` + assigned driver | 6 |
+| `POST` | `/driver/service-requests/{serviceRequest}/transition` | `auth:sanctum` + assigned driver + `Idempotency-Key` | 6 |
+| `GET` | `/service-evidence/{evidence}/file` | owner/assigned driver/admin | 6 |
+| `GET` | `/wallet` | `auth:sanctum` | 7 |
+| `GET, POST` | `/wallet/topups` | `auth:sanctum` + idempotency khi POST | 7 |
+| `POST` | `/webhooks/sepay` | `X-SePay-Secret` | 7 |
+| `GET, POST` | `/driver/bank-accounts` | `auth:sanctum` + `role:DRIVER` | 7 |
+| `GET, POST` | `/driver/withdrawals` | `auth:sanctum` + `role:DRIVER` | 7 |
 
 ## Phase 1 - Authentication
 
@@ -487,6 +499,88 @@ Voucher trong quote được kiểm tra lại, tạo một `VoucherRedemption` v
 ```
 
 Chỉ chủ request được hủy khi status còn `SCHEDULED`/`SEARCHING_DRIVER` và chưa có active assignment. WALLET được refund bằng ledger transaction đảo cân bằng; CASH không có refund; voucher được restore theo giới hạn campaign. Response `200` trả request ở `CANCELLED`.
+
+## Phase 5 - Matching và Realtime
+
+### `GET /driver/offers`
+
+Trả tối đa 50 offer `PENDING`/`ACCEPTED` của driver hiện tại, gồm khoảng cách/ETA tới pickup, thu nhập dự kiến, thời hạn offer và snapshot service request.
+
+### `POST /driver/offers/{driverOffer}/respond`
+
+Header `Idempotency-Key` bắt buộc.
+
+```json
+{"action": "accept"}
+```
+
+`action` nhận `accept` hoặc `decline`. Driver khác nhận `404`. Accept khóa offer và service request trong transaction; winner tạo đúng một `Assignment ACTIVE`, request sang `DRIVER_ARRIVING_PICKUP` hoặc `DRIVER_ARRIVING`, driver sang `BUSY` và các offer pending khác bị `CANCELLED`.
+
+Offer quá hạn chuyển `EXPIRED`. Hai driver accept gần đồng thời chỉ request đầu tiên còn `SEARCHING_DRIVER` thành công; partial unique indexes ở database bảo vệ thêm active assignment/request và active assignment/driver.
+
+Scheduler chuyển request `SCHEDULED` đã đến hạn sang `SEARCHING_DRIVER`, ghi `SCHEDULED_SEARCH_STARTED` rồi tạo offer batch.
+
+### `GET /service-requests/{serviceRequest}`
+
+Snapshot authoritative cho customer reconnect sau khi mất Socket event. Chỉ owner được xem; user khác nhận `404`.
+
+### Realtime contract
+
+- Worker ghi transactional outbox và command `outbox:publish` phát envelope vào Redis channel `worker.outbox`.
+- `service/` có thể nhận Redis Pub/Sub và RabbitMQ khi cấu hình.
+- Socket room: `service-request:{public_id}`; handshake token được xác thực qua `GET /me` và mỗi join được worker xác nhận owner qua snapshot API.
+- Event `booking:event` chứa `event_id`, `event_type`, `aggregate_version`, `payload`, `occurred_at`.
+- Service bỏ event trùng và event có version thấp hơn version đã phát.
+- Socket chỉ dùng push; accept/decline luôn đi qua HTTPS worker API.
+
+## Phase 6 - Delivery/Drive Execution
+
+### `POST /driver/service-requests/{serviceRequest}/transition`
+
+Header `Idempotency-Key` bắt buộc. Payload chung:
+
+```json
+{
+  "action": "arrive_pickup",
+  "latitude": 10.77,
+  "longitude": 106.68,
+  "out_of_geofence_reason": null,
+  "evidence_id": null,
+  "cash_collected": null,
+  "cod_collected": null
+}
+```
+
+Delivery action theo thứ tự: `arrive_pickup → pickup → start_delivery → deliver`. Drive: `arrive → start → complete`. Không được skip state. Ngoài geofence yêu cầu reason. `pickup`/`deliver` yêu cầu evidence khi `proof_policy` của order bật.
+
+Với CASH, terminal action bắt buộc xác nhận đúng `cash_collected`. COD advance/collection dùng `cod_accounts/cod_transactions` riêng và không cộng vào driver earning.
+
+### Evidence và location
+
+- `POST /driver/service-requests/{id}/evidence`: multipart, jpg/png/webp/pdf tối đa 10 MB; lưu private với SHA-256.
+- `GET /service-evidence/{id}/file`: chỉ owner, assigned driver hoặc admin.
+- `PUT /driver/location`: chỉ assigned driver; sample cũ bị từ chối, PostgreSQL giữ đúng snapshot cuối, Redis phát `DRIVER_LOCATION_UPDATED`.
+
+## Phase 7 - Settlement và Finance
+
+### Settlement
+
+Terminal execution tự tạo settlement idempotent. WALLET ghi có phần khách thực trả vào ví tài xế rồi trừ platform fee; CASH chỉ trừ platform fee sau hoàn tất. `voucher_payment_amount` chỉ là breakdown, không tạo wallet credit.
+
+### Wallet và top-up
+
+- `GET /wallet`: balance, reserved, available và 50 ledger entries gần nhất.
+- `POST /wallet/topups`: tạo VietQR request, bắt buộc `Idempotency-Key`.
+- `POST /webhooks/sepay`: xác thực `X-SePay-Secret`, dedup `event_id/transaction_id`, post TOP_UP cân bằng.
+
+### Bank account và withdrawal
+
+- Driver tạo/xem bank account; account mới chưa verified.
+- Admin verify bank account trong Filament.
+- `POST /driver/withdrawals` reserve available balance; admin complete/reject qua Filament.
+- Complete tạo ledger withdrawal cân bằng; reject chỉ giải phóng reserved.
+
+Admin Finance có Wallet/Ledger, Payment, Settlement read-only; refund/withdrawal là action service có reason/audit. WALLET refund tạo ledger credit; CASH refund bắt buộc evidence thủ công.
 
 ## Client integration checklist
 

@@ -153,4 +153,44 @@ class FakeBookingGateway implements BookingGateway {
       customerPayable: serviceRequest.customerPayable,
     );
   }
+
+  @override
+  Future<ServiceRequestSummary> loadServiceRequest(
+    BookingSession session,
+    String serviceRequestId,
+  ) async {
+    return ServiceRequestSummary(
+      id: serviceRequestId,
+      service: ServiceKind.delivery,
+      status: 'SEARCHING_DRIVER',
+      paymentMethod: PaymentChoice.wallet,
+      customerPayable: 18000,
+    );
+  }
+
+  @override
+  Future<WalletSummary> loadWallet(BookingSession session) async {
+    return const WalletSummary(
+      id: 'wallet-1',
+      balance: 100000,
+      reserved: 0,
+      available: 100000,
+      currency: 'VND',
+    );
+  }
+
+  @override
+  Future<WalletTopupSummary> createTopup({
+    required BookingSession session,
+    required double amount,
+    required String idempotencyKey,
+  }) async {
+    return WalletTopupSummary(
+      id: 'topup-1',
+      amount: amount,
+      status: 'PENDING',
+      reference: 'TOPUP123',
+      vietQrPayload: 'bank=MB&amount=$amount',
+    );
+  }
 }

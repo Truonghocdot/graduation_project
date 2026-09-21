@@ -4,6 +4,7 @@ namespace App\Filament\Resources\DriverProfiles;
 
 use App\Filament\Resources\DriverProfiles\Pages\ListDriverProfiles;
 use App\Filament\Resources\DriverProfiles\Pages\ViewDriverProfile;
+use App\Filament\Resources\DriverProfiles\RelationManagers\BankAccountsRelationManager;
 use App\Filament\Resources\DriverProfiles\RelationManagers\CapabilitiesRelationManager;
 use App\Filament\Resources\DriverProfiles\RelationManagers\DocumentsRelationManager;
 use App\Filament\Resources\DriverProfiles\RelationManagers\VehiclesRelationManager;
@@ -51,6 +52,7 @@ class DriverProfileResource extends Resource
             DocumentsRelationManager::class,
             VehiclesRelationManager::class,
             CapabilitiesRelationManager::class,
+            BankAccountsRelationManager::class,
         ];
     }
 

@@ -5,7 +5,9 @@ namespace App\Models;
 use App\Enums\DriverAvailabilityStatus;
 use App\Enums\DriverReviewStatus;
 use Carbon\CarbonImmutable;
+use Database\Factories\DriverProfileFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -39,6 +41,9 @@ use Illuminate\Support\Str;
 ])]
 class DriverProfile extends Model
 {
+    /** @use HasFactory<DriverProfileFactory> */
+    use HasFactory;
+
     protected static function booted(): void
     {
         static::creating(function (DriverProfile $profile): void {
@@ -85,6 +90,12 @@ class DriverProfile extends Model
     public function bankAccounts(): HasMany
     {
         return $this->hasMany(DriverBankAccount::class);
+    }
+
+    /** @return HasMany<Assignment, $this> */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
     }
 
     public function isEditable(): bool

@@ -114,6 +114,24 @@ class ServiceRequest extends Model
         return $this->hasMany(ServiceStatusHistory::class);
     }
 
+    /** @return HasMany<DriverOffer, $this> */
+    public function driverOffers(): HasMany
+    {
+        return $this->hasMany(DriverOffer::class);
+    }
+
+    /** @return HasMany<Assignment, $this> */
+    public function assignments(): HasMany
+    {
+        return $this->hasMany(Assignment::class);
+    }
+
+    /** @return HasMany<ServiceEvidence, $this> */
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(ServiceEvidence::class);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

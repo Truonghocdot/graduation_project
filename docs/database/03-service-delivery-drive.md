@@ -218,3 +218,23 @@ Unique: `(delivery_order_id, revision_number)`.
 `SCHEDULED`, `SEARCHING_DRIVER`, `DRIVER_ASSIGNED`, `DRIVER_ARRIVING`, `DRIVER_ARRIVED`, `IN_TRIP`, `COMPLETED`, `NO_DRIVER_FOUND`, `NO_SHOW`, `CANCELLED`.
 
 Application enum chọn allowed transition theo `service_type`; database CHECK bảo đảm status thuộc union của hai tập giá trị.
+
+## 11. `service_evidences`
+
+Evidence là file private gắn với đúng service request, assignment và actor upload.
+
+| Cột | Kiểu | Null | Key | Ý nghĩa |
+|---|---|---:|---|---|
+| `id` | `BIGINT` | Không | PK | |
+| `public_id` | `UUID` | Không | UNIQUE | ID dùng API |
+| `service_request_id` | `BIGINT` | Không | FK, INDEX | Request sở hữu |
+| `assignment_id` | `BIGINT` | Không | FK | Assignment tại thời điểm upload |
+| `uploaded_by` | `BIGINT` | Không | FK `users` | Driver actor |
+| `evidence_type` | `VARCHAR(40)` | Không | INDEX | `PICKUP`, `DELIVERY`, `PASSENGER_CONFIRMATION`, `INCIDENT` |
+| `storage_path` | `TEXT` | Không | | Path private |
+| `original_name`, `mime_type`, `size_bytes` | | Không | | Metadata file |
+| `sha256` | `CHAR(64)` | Không | INDEX | Kiểm tra toàn vẹn |
+| `metadata` | `JSONB` | Có | | Tọa độ/note đã lọc |
+| `created_at` | `TIMESTAMPTZ` | Không | INDEX | |
+
+File không có public URL. Owner request, assigned driver và admin tải qua authenticated endpoint.

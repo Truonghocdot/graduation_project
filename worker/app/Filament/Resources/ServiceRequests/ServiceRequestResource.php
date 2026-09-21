@@ -69,6 +69,8 @@ class ServiceRequestResource extends Resource
             'deliveryOrder',
             'rideBooking',
             'payment.payer',
+            'payment.settlement',
+            'evidences.uploader',
         ]);
     }
 }

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import 'api/booking_api.dart';
@@ -94,6 +96,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
   String? _createIdempotencyKey;
   bool _busy = false;
   String? _error;
+  Timer? _snapshotTimer;
 
   @override
   void initState() {
@@ -105,6 +108,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
 
   @override
   void dispose() {
+    _snapshotTimer?.cancel();
     for (final controller in [
       _pickupAddress,
       _pickupLatitude,
@@ -131,6 +135,12 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       appBar: AppBar(
         title: Text(_session.token.isEmpty ? 'Đăng nhập' : 'Đặt dịch vụ'),
         actions: [
+          if (_session.token.isNotEmpty)
+            IconButton(
+              tooltip: 'Ví lạnh',
+              onPressed: _busy ? null : _showWallet,
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+            ),
           if (_session.token.isNotEmpty)
             IconButton(
               tooltip: 'Đăng xuất',
@@ -616,6 +626,12 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
             ),
             const SizedBox(height: 8),
             SelectableText(request.id),
+            if (request.driverNetEarning != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Đã quyết toán · Thu nhập tài xế ${request.driverNetEarning!.toStringAsFixed(0)} VND',
+              ),
+            ],
             const SizedBox(height: 16),
             OutlinedButton.icon(
               onPressed: _busy || request.status == 'CANCELLED'
@@ -784,6 +800,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
         idempotencyKey: _createIdempotencyKey!,
       );
       setState(() => _serviceRequest = request);
+      _startSnapshotPolling();
     });
   }
 
@@ -817,6 +834,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
         reasonCode: 'CUSTOMER_CHANGED_MIND',
       );
       setState(() => _serviceRequest = cancelled);
+      _snapshotTimer?.cancel();
     });
   }
 
@@ -883,6 +901,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
   }
 
   void _logout() {
+    _snapshotTimer?.cancel();
     setState(() {
       _session = _session.copyWith(token: '', vehicleTypeId: '');
       _vehicles = const [];
@@ -892,5 +911,102 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       _error = null;
       _password.clear();
     });
+  }
+
+  Future<void> _showWallet() async {
+    final amount = TextEditingController(text: '100000');
+    WalletSummary? wallet;
+    WalletTopupSummary? topup;
+
+    try {
+      wallet = await widget.gateway.loadWallet(_session);
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+      amount.dispose();
+      return;
+    }
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            20,
+            16,
+            MediaQuery.viewInsetsOf(context).bottom + 20,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Ví lạnh', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 16),
+              _amountRow('Số dư', wallet!.balance, emphasized: true),
+              _amountRow('Đang giữ để rút', wallet.reserved),
+              _amountRow('Khả dụng', wallet.available),
+              const SizedBox(height: 16),
+              TextField(
+                controller: amount,
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                decoration: const InputDecoration(labelText: 'Số tiền nạp'),
+              ),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () async {
+                  final value = double.tryParse(amount.text);
+                  if (value == null) return;
+                  final created = await widget.gateway.createTopup(
+                    session: _session,
+                    amount: value,
+                    idempotencyKey:
+                        'mobile-topup-${DateTime.now().microsecondsSinceEpoch}',
+                  );
+                  setSheetState(() => topup = created);
+                },
+                icon: const Icon(Icons.qr_code_2),
+                label: const Text('Tạo mã nạp tiền'),
+              ),
+              if (topup != null) ...[
+                const SizedBox(height: 16),
+                SelectableText('Nội dung: ${topup!.reference}'),
+                const SizedBox(height: 4),
+                SelectableText(topup!.vietQrPayload),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+    amount.dispose();
+  }
+
+  void _startSnapshotPolling() {
+    _snapshotTimer?.cancel();
+    _snapshotTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      unawaited(_refreshSnapshot());
+    });
+  }
+
+  Future<void> _refreshSnapshot() async {
+    final request = _serviceRequest;
+    if (request == null || _busy || request.status == 'CANCELLED') {
+      return;
+    }
+
+    try {
+      final snapshot = await widget.gateway.loadServiceRequest(
+        _session,
+        request.id,
+      );
+      if (!mounted) return;
+      setState(() => _serviceRequest = snapshot);
+    } catch (_) {
+      // The next interval retries from the authoritative worker snapshot.
+    }
   }
 }

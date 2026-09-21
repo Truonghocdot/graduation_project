@@ -4,7 +4,9 @@ namespace App\Models;
 
 use App\Enums\ReviewableStatus;
 use Carbon\CarbonImmutable;
+use Database\Factories\VehicleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -36,6 +38,9 @@ use Illuminate\Support\Str;
 ])]
 class Vehicle extends Model
 {
+    /** @use HasFactory<VehicleFactory> */
+    use HasFactory;
+
     use SoftDeletes;
 
     protected static function booted(): void

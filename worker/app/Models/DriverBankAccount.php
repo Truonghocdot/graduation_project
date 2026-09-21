@@ -8,6 +8,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property string $public_id
+ * @property string $bank_code
+ * @property string $account_number_encrypted
+ * @property string $account_name
+ * @property bool $is_verified
+ * @property bool $is_default
+ */
 #[Fillable([
     'driver_profile_id',
     'bank_code',

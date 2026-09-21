@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
@@ -40,5 +41,11 @@ class LedgerAccount extends Model
     public function wallet(): HasOne
     {
         return $this->hasOne(Wallet::class);
+    }
+
+    /** @return HasMany<LedgerEntry, $this> */
+    public function entries(): HasMany
+    {
+        return $this->hasMany(LedgerEntry::class);
     }
 }

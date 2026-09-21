@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\ServiceRequests\Schemas;
 
+use App\Models\ServiceEvidence;
+use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -32,6 +34,10 @@ class ServiceRequestInfolist
                 TextEntry::make('payment.gross_fare')->money('VND'),
                 TextEntry::make('payment.voucher_discount')->money('VND'),
                 TextEntry::make('payment.customer_payable')->money('VND'),
+                TextEntry::make('payment.settlement.driver_net_earning')
+                    ->label('Driver net')
+                    ->money('VND')
+                    ->placeholder('Not settled'),
             ])->columns(2),
             Section::make('Service detail')->schema([
                 TextEntry::make('deliveryOrder.goods_type')->label('Goods')->placeholder('Not delivery'),
@@ -40,6 +46,20 @@ class ServiceRequestInfolist
                 TextEntry::make('quote.distance_meters')->label('Distance')->suffix(' m'),
                 TextEntry::make('quote.duration_seconds')->label('Duration')->suffix(' s'),
             ])->columns(2),
+            Section::make('Private evidence')->schema([
+                RepeatableEntry::make('evidences')
+                    ->schema([
+                        TextEntry::make('evidence_type')->badge(),
+                        TextEntry::make('original_name')
+                            ->url(fn (ServiceEvidence $record): string => route(
+                                'api.v1.service-evidence.file',
+                                ['evidence' => $record],
+                            ))
+                            ->openUrlInNewTab(),
+                        TextEntry::make('uploader.name')->label('Uploaded by'),
+                        TextEntry::make('created_at')->dateTime(),
+                    ])->columns(4),
+            ]),
         ]);
     }
 }

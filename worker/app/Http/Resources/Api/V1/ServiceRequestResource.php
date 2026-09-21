@@ -20,7 +20,7 @@ class ServiceRequestResource extends JsonResource
             'scheduled_at' => $this->scheduled_at,
             'search_started_at' => $this->search_started_at,
             'vehicle_type' => new VehicleTypeResource($this->whenLoaded('vehicleType')),
-            'quote_id' => $this->quote?->public_id,
+            'quote_id' => $this->whenLoaded('quote', fn () => $this->quote->public_id),
             'stops' => ServiceStopResource::collection($this->whenLoaded('stops')),
             'delivery_order' => $this->whenLoaded('deliveryOrder', fn () => [
                 'payer_type' => $this->deliveryOrder->payer_type->value,
@@ -48,7 +48,19 @@ class ServiceRequestResource extends JsonResource
                 'voucher_discount' => $this->payment->voucher_discount,
                 'customer_payable' => $this->payment->customer_payable,
                 'currency' => $this->payment->currency,
+                'settlement' => $this->payment->relationLoaded('settlement')
+                    && $this->payment->settlement !== null
+                        ? new SettlementResource($this->payment->settlement)
+                        : null,
             ]),
+            'assignment' => $this->whenLoaded('assignments', function () {
+                $assignment = $this->assignments->first();
+
+                return $assignment === null ? null : new AssignmentResource($assignment);
+            }),
+            'evidences' => ServiceEvidenceResource::collection(
+                $this->whenLoaded('evidences'),
+            ),
             'created_at' => $this->created_at,
         ];
     }
