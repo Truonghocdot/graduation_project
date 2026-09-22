@@ -1,29 +1,42 @@
 # Customer mobile
 
-> Trạng thái: `IMPLEMENTED`
+Ứng dụng khách hàng được tổ chức theo page, còn state và điều phối API tập trung tại `ClientAppController`.
 
-`main.dart` chỉ bootstrap API, secure session và realtime. State dùng chung nằm ở `lib/presentation/client_app_controller.dart`; mỗi workflow được tách thành page riêng:
+## Chức năng
 
-```text
-lib/presentation/pages/
-├── auth/
-│   ├── login_page.dart              # Đăng nhập SĐT/mật khẩu, reset mật khẩu
-│   └── register_page.dart           # Đăng ký thông tin tài khoản
-├── main_navigation_page.dart        # Bottom Navigation Bar chính
-├── home/
-│   ├── home_page.dart               # Trang chủ: Delivery, Drive và đặt lịch
-│   └── service_detail_page.dart     # Chọn loại hình giao hàng/loại xe
-├── order/
-│   ├── create_order_page.dart       # Nhập điểm đi/đến, payload dịch vụ, voucher và lịch
-│   ├── order_checkout_page.dart     # Xác nhận đơn, chọn Voucher, phương thức thanh toán
-│   ├── active_order_tracking_page.dart # [REALTIME] Route snapshot + Socket status
-│   ├── order_history_page.dart      # Danh sách lịch sử đơn hàng (Tab: Đang chạy / Đã hoàn thành)
-│   └── order_detail_page.dart       # Chi tiết đơn hàng cũ, hóa đơn
-├── chat/
-│   └── chat_with_driver_page.dart   # [REALTIME] Chat với tài xế nhận đơn
-└── profile/
-    ├── profile_page.dart            # Thông tin cá nhân, cài đặt
-    └── rating_review_page.dart      # Đánh giá tài xế (Sao + Comment) sau khi hoàn thành đơn
+- Đăng ký, xác minh OTP, đăng nhập và đặt lại mật khẩu.
+- Xin quyền vị trí khi mở app để gợi ý điểm đón và hỗ trợ theo dõi chuyến.
+- Chọn giao hàng hoặc đặt xe, loại phương tiện và lịch thực hiện.
+- Tìm địa chỉ bằng Goong Autocomplete; lấy tọa độ bằng Place Detail hoặc Geocode.
+- Lấy Directions và hiển thị tuyến đường bằng MapLibre với style Goong.
+- Nhận báo giá từ backend, chọn thanh toán, tạo yêu cầu và theo dõi realtime.
+- Xem lịch sử, ví, thông báo, hỗ trợ và đánh giá tài xế.
+
+## Cấu hình Goong
+
+Không ghi API key trực tiếp vào source code. Chạy app bằng hai biến build-time:
+
+```powershell
+flutter run -d emulator-5554 `
+  --dart-define=GOONG_API_KEY=your_rest_api_key `
+  --dart-define=GOONG_MAP_KEY=your_map_tile_key
 ```
 
-Các page gọi worker API qua `BookingGateway`; không chứa logic tính giá, matching hoặc settlement. `active_order_tracking_page.dart` hiện hiển thị route snapshot và trạng thái realtime. Bản đồ tile/SDK điều hướng thật chưa được thêm vì backend chưa cung cấp map token/style contract cho mobile.
+`GOONG_API_KEY` dùng cho Autocomplete, Place Detail, Geocode và Directions. `GOONG_MAP_KEY` dùng để tải style/tile bản đồ. Khi thiếu map key, form vẫn hoạt động và hiển thị trạng thái chưa cấu hình thay vì khởi tạo native map.
+
+## Tổ chức mã nguồn
+
+```text
+lib/
+|-- api/
+|   |-- client_location.dart       # Permission và vị trí thiết bị
+|   `-- goong_location_api.dart    # Goong REST API + polyline decoder
+`-- presentation/
+    |-- client_app_controller.dart # Session và nghiệp vụ dùng chung
+    |-- pages/order/
+    |   `-- create_order_page.dart # Tìm địa chỉ, route, payload báo giá
+    `-- widgets/
+        `-- goong_map_preview.dart # MapLibre + style Goong
+```
+
+Xem [luồng nghiệp vụ đặt dịch vụ](customer-booking-flow.md) để biết state, API và các nhánh lỗi.

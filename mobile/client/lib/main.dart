@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import 'api/booking_api.dart';
 import 'api/booking_realtime.dart';
+import 'api/client_location.dart';
+import 'api/goong_location_api.dart';
 import 'api/session_store.dart';
 import 'presentation/client_app.dart';
 
@@ -12,6 +14,7 @@ Future<void> main() async {
   final savedToken = await sessionStore.readToken();
   final deviceId = await sessionStore.installationId();
   const configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
+  const goongApiKey = String.fromEnvironment('GOONG_API_KEY');
   final defaultBaseUrl = kIsWeb
       ? 'http://127.0.0.1:8000/api/v1'
       : defaultTargetPlatform == TargetPlatform.android
@@ -21,6 +24,8 @@ Future<void> main() async {
   runApp(
     BookingApp(
       gateway: BookingApi(deviceId: deviceId),
+      locationSource: DeviceClientLocationSource(),
+      goong: GoongLocationApi(apiKey: goongApiKey),
       sessionStore: sessionStore,
       realtime: BookingRealtime(),
       initialSession: BookingSession(

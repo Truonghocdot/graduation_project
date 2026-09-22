@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../api/device_location.dart';
 import '../api/driver_api.dart';
 import '../api/driver_realtime.dart';
+import '../api/goong_navigation_api.dart';
 import '../api/request_id.dart';
 import '../api/session_store.dart';
 
@@ -13,12 +14,14 @@ class DriverAppController extends ChangeNotifier {
     required this.gateway,
     required DriverSession initialSession,
     required this.locationSource,
+    this.goong,
     this.sessionStore,
     this.realtime,
   }) : _session = initialSession;
 
   final DriverGateway gateway;
   final DriverLocationSource locationSource;
+  final GoongNavigationApi? goong;
   final DriverSessionStore? sessionStore;
   final DriverRealtime? realtime;
 
@@ -37,10 +40,13 @@ class DriverAppController extends ChangeNotifier {
   bool busy = false;
   bool _locationBusy = false;
   String? error;
+  String? locationError;
+  DriverPosition? currentPosition;
   Timer? _offerTimer;
   Timer? _locationTimer;
   final _offerKeys = <String, String>{};
   final _transitionKeys = <String, String>{};
+  bool _disposed = false;
 
   DriverSession get session => _session;
   bool get authenticated => _session.token.isNotEmpty;
@@ -52,6 +58,32 @@ class DriverAppController extends ChangeNotifier {
       gateway is DriverSupportGateway ? gateway as DriverSupportGateway : null;
   DriverOfferSummary? get activeOffer =>
       offers.where((offer) => offer.status == 'ACCEPTED').firstOrNull;
+
+  Future<void> prepareLocation() async {
+    try {
+      if (locationSource case final DeviceLocationSource source) {
+        await source.prepare();
+      }
+      currentPosition = await locationSource.current();
+      locationError = null;
+    } catch (exception) {
+      locationError = exception.toString();
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<DriverPosition?> refreshPosition() async {
+    try {
+      currentPosition = await locationSource.current();
+      locationError = null;
+      if (!_disposed) notifyListeners();
+      return currentPosition;
+    } catch (exception) {
+      locationError = exception.toString();
+      if (!_disposed) notifyListeners();
+      return null;
+    }
+  }
 
   Future<void> initialize() async {
     if (!authenticated) {
@@ -243,6 +275,7 @@ class DriverAppController extends ChangeNotifier {
       final position = online
           ? await locationSource.current()
           : const DriverPosition(0, 0, 0);
+      if (online) currentPosition = position;
       profile = await ops.setAvailability(
         session: _session,
         online: online,
@@ -286,6 +319,7 @@ class DriverAppController extends ChangeNotifier {
   }) async {
     await _guard(() async {
       final position = await locationSource.current();
+      currentPosition = position;
       final key = '${offer.id}:$action';
       final status = await gateway.transition(
         session: _session,
@@ -327,6 +361,7 @@ class DriverAppController extends ChangeNotifier {
     if (ops == null) return;
     await _guard(() async {
       final position = await locationSource.current();
+      currentPosition = position;
       evidenceIds['${offer.id}:$action'] = await ops.uploadEvidence(
         session: _session,
         serviceRequestId: offer.serviceRequestId,
@@ -487,6 +522,7 @@ class DriverAppController extends ChangeNotifier {
       _locationBusy = true;
       try {
         final position = await locationSource.current();
+        currentPosition = position;
         final ops = operations;
         if (ops == null) return;
         if (activeOffer != null) {
@@ -506,6 +542,7 @@ class DriverAppController extends ChangeNotifier {
             serviceTypes: selectedServices.toList(growable: false),
           );
         }
+        if (!_disposed) notifyListeners();
       } on DriverApiException catch (exception) {
         if (exception.statusCode == 401) await clearSession();
       } catch (_) {
@@ -537,9 +574,11 @@ class DriverAppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _offerTimer?.cancel();
     _locationTimer?.cancel();
     realtime?.dispose();
+    goong?.dispose();
     super.dispose();
   }
 }

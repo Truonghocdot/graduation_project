@@ -1,14 +1,35 @@
 import 'package:flutter/material.dart';
 
+import '../../../api/goong_navigation_api.dart';
 import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
 import '../../widgets/driver_feedback.dart';
+import '../../widgets/driver_goong_map.dart';
 import 'chat_with_customer_page.dart';
 import 'update_status_page.dart';
 
-class JobNavigationPage extends StatelessWidget {
+class JobNavigationPage extends StatefulWidget {
   const JobNavigationPage({super.key, required this.controller});
+
   final DriverAppController controller;
+
+  @override
+  State<JobNavigationPage> createState() => _JobNavigationPageState();
+}
+
+class _JobNavigationPageState extends State<JobNavigationPage> {
+  DriverAppController get controller => widget.controller;
+
+  NavigationRoute? route;
+  String? routeError;
+  String? loadedRouteKey;
+  bool routeLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _refreshNavigation());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -21,11 +42,24 @@ class JobNavigationPage extends StatelessWidget {
             body: Center(child: Text('Không có chuyến đang chạy.')),
           );
         }
+        final routeKey = '${offer.id}:${offer.serviceStatus}';
+        if (routeKey != loadedRouteKey && !routeLoading) {
+          WidgetsBinding.instance.addPostFrameCallback(
+            (_) => _refreshNavigation(),
+          );
+        }
         final action = _nextAction(offer.serviceStatus);
         return Scaffold(
           appBar: AppBar(
             title: const Text('Điều hướng chuyến'),
             actions: [
+              IconButton(
+                tooltip: 'Làm mới tuyến đường',
+                onPressed: routeLoading
+                    ? null
+                    : () => _refreshNavigation(force: true),
+                icon: const Icon(Icons.refresh),
+              ),
               IconButton(
                 tooltip: 'Chat với khách',
                 onPressed: () => Navigator.push(
@@ -44,58 +78,31 @@ class JobNavigationPage extends StatelessWidget {
           body: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Container(
-                height: 260,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE7EEF5),
-                  border: Border.all(color: const Color(0xFFC9D6E2)),
-                  borderRadius: BorderRadius.circular(8),
+              DriverGoongMap(
+                mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
+                current: _currentCoordinate,
+                pickup: NavigationCoordinate(
+                  latitude: offer.pickupLatitude,
+                  longitude: offer.pickupLongitude,
                 ),
-                child: Stack(
-                  children: [
-                    const Positioned(
-                      left: 28,
-                      top: 35,
-                      child: Icon(
-                        Icons.radio_button_checked,
-                        color: Color(0xFF215F9A),
-                      ),
-                    ),
-                    const Positioned(
-                      right: 30,
-                      bottom: 38,
-                      child: Icon(
-                        Icons.location_on,
-                        size: 32,
-                        color: Color(0xFFB35C21),
-                      ),
-                    ),
-                    Positioned.fill(
-                      child: Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.navigation,
-                              size: 38,
-                              color: Color(0xFF215F9A),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${offer.pickupLatitude}, ${offer.pickupLongitude}',
-                            ),
-                            const Text('đến'),
-                            Text(
-                              '${offer.dropoffLatitude}, ${offer.dropoffLongitude}',
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
+                dropoff: NavigationCoordinate(
+                  latitude: offer.dropoffLatitude,
+                  longitude: offer.dropoffLongitude,
                 ),
+                route: route?.geometry,
               ),
+              if (routeLoading) const LinearProgressIndicator(minHeight: 2),
+              if (route != null) ...[
+                const SizedBox(height: 10),
+                _NavigationSummary(
+                  route: route!,
+                  destinationLabel: _destinationLabel(offer.serviceStatus),
+                ),
+              ],
+              if (routeError != null) ...[
+                const SizedBox(height: 10),
+                DriverErrorBanner(message: routeError!),
+              ],
               const SizedBox(height: 14),
               Card(
                 child: Padding(
@@ -169,6 +176,77 @@ class JobNavigationPage extends StatelessWidget {
       },
     );
   }
+
+  NavigationCoordinate? get _currentCoordinate {
+    final position = controller.currentPosition;
+    if (position == null) return null;
+    return NavigationCoordinate(
+      latitude: position.latitude,
+      longitude: position.longitude,
+    );
+  }
+
+  Future<void> _refreshNavigation({bool force = false}) async {
+    if (!mounted) return;
+    final offer = controller.activeOffer;
+    if (offer == null || routeLoading) return;
+    final routeKey = '${offer.id}:${offer.serviceStatus}';
+    if (!force && loadedRouteKey == routeKey) return;
+    loadedRouteKey = routeKey;
+    setState(() {
+      routeLoading = true;
+      routeError = null;
+    });
+    try {
+      final position = await controller.refreshPosition();
+      if (position == null) {
+        throw StateError('Không lấy được vị trí hiện tại của tài xế.');
+      }
+      final api = controller.goong;
+      if (api?.configured != true) {
+        throw const GoongNavigationException(
+          'Chưa cấu hình GOONG_API_KEY cho ứng dụng tài xế.',
+        );
+      }
+      final target = _usesDropoff(offer.serviceStatus)
+          ? NavigationCoordinate(
+              latitude: offer.dropoffLatitude,
+              longitude: offer.dropoffLongitude,
+            )
+          : NavigationCoordinate(
+              latitude: offer.pickupLatitude,
+              longitude: offer.pickupLongitude,
+            );
+      final nextRoute = await api!.directions(
+        origin: NavigationCoordinate(
+          latitude: position.latitude,
+          longitude: position.longitude,
+        ),
+        destination: target,
+        vehicle: offer.serviceType == 'DELIVERY' ? 'bike' : 'car',
+      );
+      if (mounted &&
+          '${controller.activeOffer?.id}:${controller.activeOffer?.serviceStatus}' ==
+              routeKey) {
+        setState(() => route = nextRoute);
+      }
+    } catch (exception) {
+      if (mounted) {
+        setState(() {
+          route = null;
+          routeError = exception.toString();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => routeLoading = false);
+    }
+  }
+
+  bool _usesDropoff(String status) =>
+      const {'PICKED_UP', 'IN_DELIVERY', 'IN_TRIP'}.contains(status);
+
+  String _destinationLabel(String status) =>
+      _usesDropoff(status) ? 'điểm đến' : 'điểm đón';
 
   JobAction? _nextAction(String status) => switch (status) {
     'DRIVER_ARRIVING_PICKUP' => const JobAction(
@@ -289,5 +367,40 @@ class JobNavigationPage extends StatelessWidget {
     }
     subject.dispose();
     body.dispose();
+  }
+}
+
+class _NavigationSummary extends StatelessWidget {
+  const _NavigationSummary({
+    required this.route,
+    required this.destinationLabel,
+  });
+
+  final NavigationRoute route;
+  final String destinationLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final kilometers = route.distanceMeters / 1000;
+    final minutes = (route.durationSeconds / 60).ceil();
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFE7EEF5),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.navigation_outlined, color: Color(0xFF215F9A)),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${kilometers.toStringAsFixed(1)} km đến $destinationLabel',
+            ),
+          ),
+          Text('$minutes phút'),
+        ],
+      ),
+    );
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api/device_location.dart';
 import '../api/driver_api.dart';
 import '../api/driver_realtime.dart';
+import '../api/goong_navigation_api.dart';
 import '../api/session_store.dart';
 import 'driver_app_controller.dart';
 import 'pages/auth/driver_kyc_page.dart';
@@ -17,6 +18,7 @@ class DriverApp extends StatefulWidget {
     this.sessionStore,
     this.realtime,
     this.locationSource,
+    this.goong,
   });
 
   final DriverGateway gateway;
@@ -24,6 +26,7 @@ class DriverApp extends StatefulWidget {
   final DriverSessionStore? sessionStore;
   final DriverRealtime? realtime;
   final DriverLocationSource? locationSource;
+  final GoongNavigationApi? goong;
 
   @override
   State<DriverApp> createState() => _DriverAppState();
@@ -36,12 +39,14 @@ class _DriverAppState extends State<DriverApp> {
     sessionStore: widget.sessionStore,
     realtime: widget.realtime,
     locationSource: widget.locationSource ?? DeviceLocationSource(),
+    goong: widget.goong,
   );
 
   @override
   void initState() {
     super.initState();
     controller.initialize();
+    controller.prepareLocation();
   }
 
   @override

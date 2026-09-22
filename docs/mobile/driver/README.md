@@ -1,29 +1,57 @@
 # Driver mobile
 
-> Trạng thái: `IMPLEMENTED`
+Ứng dụng tài xế điều phối đăng ký đối tác, KYC, GPS heartbeat, offer, chuyến đang chạy, ví và hỗ trợ.
 
-`main.dart` chỉ bootstrap dependency. `lib/presentation/driver_app_controller.dart` điều phối session, KYC, GPS heartbeat, offer, active assignment và finance; UI được tách như sau:
+## Bản đồ Goong
+
+Trang chủ hiển thị vị trí GPS hiện tại. Khi có chuyến được nhận, màn hình điều hướng hiển thị:
+
+- Vị trí hiện tại của tài xế.
+- Điểm đón và điểm đến.
+- Tuyến Goong Directions từ tài xế đến điểm cần tới tiếp theo.
+- Khoảng cách và thời gian dự kiến.
+
+Đích điều hướng thay đổi theo trạng thái:
 
 ```text
-lib/presentation/pages/
-├── auth/
-│   ├── driver_login_page.dart       # Đăng nhập tài xế
-│   └── driver_kyc_page.dart         # Upload Bằng lái, CCCD, Giấy tờ xe (Chờ Admin duyệt)
-├── main_driver_navigation_page.dart # Bottom Navigation Bar tài xế
-├── home/
-│   ├── driver_home_page.dart        # [REALTIME] Bật/Tắt online, khu vực hoạt động, popup nhận đơn
-│   └── incoming_order_dialog.dart   # Popup đếm ngược 15s chấp nhận/từ chối đơn hàng mới
-├── active_job/
-│   ├── job_navigation_page.dart     # [REALTIME] Tọa độ route và điều phối trạng thái
-│   ├── update_status_page.dart      # Chụp ảnh xác nhận đã lấy hàng / đã giao hàng thành công
-│   └── chat_with_customer_page.dart # Chat realtime với khách hàng
-├── wallet/
-│   ├── wallet_page.dart             # Số dư ví và tài khoản ngân hàng
-│   └── withdraw_page.dart           # Rút tiền về ngân hàng
-├── history/
-│   └── driver_history_page.dart     # Lịch sử chuyến đã đóng và tổng thu nhập
-└── profile/
-    └── driver_profile_page.dart     # Hồ sơ, capability, notification và support
+DRIVER_ARRIVING / DRIVER_ARRIVING_PICKUP / AT_PICKUP -> điểm đón
+PICKED_UP / IN_DELIVERY / IN_TRIP                  -> điểm đến
 ```
 
-Offer mới tự mở dialog đếm ngược và vẫn xuất hiện trong danh sách fallback. `job_navigation_page.dart` dùng tọa độ pickup/dropoff và GPS thật để điều phối trạng thái; SDK bản đồ/chỉ đường trực quan chưa được tích hợp vì mobile chưa có map provider contract. Rating trung bình cũng chờ read-model tổng hợp từ worker, không tính cục bộ trong Dart.
+Map dùng `maplibre_gl` với style Goong. Directions dùng `bike` cho giao hàng và `car` cho đặt xe.
+
+## Cấu hình
+
+Tạo `mobile/driver/.env` từ `.env.example`:
+
+```env
+API_BASE_URL=http://10.0.2.2:8000/api/v1
+REALTIME_URL=http://10.0.2.2:3000
+GOONG_API_KEY=your_goong_rest_api_key
+GOONG_MAP_KEY=your_goong_map_tile_key
+```
+
+Chạy trên đúng emulator để tránh phiên khác cài đè package:
+
+```powershell
+flutter run -d emulator-5556 --dart-define-from-file=.env
+```
+
+Không commit `.env`. `GOONG_API_KEY` dùng cho Directions; `GOONG_MAP_KEY` dùng tải style và tile.
+
+## Cấu trúc liên quan
+
+```text
+lib/
+|-- api/
+|   |-- device_location.dart       # Permission và GPS
+|   `-- goong_navigation_api.dart  # Directions + polyline decoder
+`-- presentation/
+    |-- driver_app_controller.dart # Location heartbeat và state
+    |-- pages/
+    |   |-- home/driver_home_page.dart
+    |   `-- active_job/job_navigation_page.dart
+    `-- widgets/driver_goong_map.dart
+```
+
+Offer mới vẫn tự mở dialog đếm ngược. Map chỉ hỗ trợ quan sát tuyến trong app; nó không cung cấp turn-by-turn voice navigation. Nút làm mới trên màn hình chuyến sẽ lấy lại GPS và gọi Directions mới.

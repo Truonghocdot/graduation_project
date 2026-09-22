@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../api/device_location.dart';
+import '../../../api/goong_navigation_api.dart';
 import '../../driver_app_controller.dart';
 import '../../widgets/driver_feedback.dart';
+import '../../widgets/driver_goong_map.dart';
 import '../active_job/job_navigation_page.dart';
 import 'incoming_order_dialog.dart';
 
@@ -79,43 +82,36 @@ class _DriverHomePageState extends State<DriverHomePage> {
             const SizedBox(height: 10),
             DriverErrorBanner(message: error),
           ],
+          if (controller.locationError case final locationError?
+              when locationError != controller.error) ...[
+            const SizedBox(height: 10),
+            DriverErrorBanner(message: locationError),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: controller.prepareLocation,
+                icon: const Icon(Icons.my_location_outlined),
+                label: const Text('Thử lại quyền vị trí'),
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
-          Container(
+          DriverGoongMap(
             height: 210,
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: const Color(0xFFE7EEF5),
-              border: Border.all(color: const Color(0xFFC9D6E2)),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Stack(
-              children: [
-                const Positioned(
-                  left: 28,
-                  top: 30,
-                  child: Icon(Icons.circle, size: 14, color: Color(0xFF215F9A)),
-                ),
-                const Positioned(
-                  right: 34,
-                  bottom: 36,
-                  child: Icon(
-                    Icons.location_on,
-                    size: 30,
-                    color: Color(0xFFB35C21),
+            mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
+            current: _coordinate(controller.currentPosition),
+            pickup: active == null
+                ? null
+                : NavigationCoordinate(
+                    latitude: active.pickupLatitude,
+                    longitude: active.pickupLongitude,
                   ),
-                ),
-                Positioned.fill(
-                  child: Center(
-                    child: Text(
-                      active == null
-                          ? 'Khu vực hoạt động hiện tại'
-                          : 'Đang thực hiện ${active.serviceType}',
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
+            dropoff: active == null
+                ? null
+                : NavigationCoordinate(
+                    latitude: active.dropoffLatitude,
+                    longitude: active.dropoffLongitude,
                   ),
-                ),
-              ],
-            ),
           ),
           if (active != null) ...[
             const SizedBox(height: 14),
@@ -168,6 +164,14 @@ class _DriverHomePageState extends State<DriverHomePage> {
             ),
         ],
       ),
+    );
+  }
+
+  NavigationCoordinate? _coordinate(DriverPosition? position) {
+    if (position == null) return null;
+    return NavigationCoordinate(
+      latitude: position.latitude,
+      longitude: position.longitude,
     );
   }
 }

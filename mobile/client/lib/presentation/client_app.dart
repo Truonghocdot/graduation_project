@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../api/booking_api.dart';
 import '../api/booking_realtime.dart';
+import '../api/client_location.dart';
+import '../api/goong_location_api.dart';
 import '../api/session_store.dart';
 import 'client_app_controller.dart';
 import 'pages/auth/login_page.dart';
@@ -12,12 +14,16 @@ class BookingApp extends StatefulWidget {
     super.key,
     required this.gateway,
     required this.initialSession,
+    this.locationSource,
+    this.goong,
     this.sessionStore,
     this.realtime,
   });
 
   final BookingGateway gateway;
   final BookingSession initialSession;
+  final ClientLocationSource? locationSource;
+  final GoongLocationApi? goong;
   final BookingSessionStore? sessionStore;
   final BookingRealtime? realtime;
 
@@ -29,6 +35,8 @@ class _BookingAppState extends State<BookingApp> {
   late final ClientAppController controller = ClientAppController(
     gateway: widget.gateway,
     initialSession: widget.initialSession,
+    locationSource: widget.locationSource,
+    goong: widget.goong,
     sessionStore: widget.sessionStore,
     realtime: widget.realtime,
   );
@@ -37,6 +45,7 @@ class _BookingAppState extends State<BookingApp> {
   void initState() {
     super.initState();
     controller.initialize();
+    controller.prepareLocation();
   }
 
   @override

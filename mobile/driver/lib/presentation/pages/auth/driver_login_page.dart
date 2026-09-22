@@ -5,6 +5,7 @@ import '../../widgets/driver_feedback.dart';
 
 class DriverLoginPage extends StatefulWidget {
   const DriverLoginPage({super.key, required this.controller});
+
   final DriverAppController controller;
 
   @override
@@ -70,6 +71,10 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
                     const SizedBox(height: 12),
                     DriverErrorBanner(message: error),
                   ],
+                  if (state.locationError case final locationError?) ...[
+                    const SizedBox(height: 12),
+                    DriverErrorBanner(message: locationError),
+                  ],
                   const SizedBox(height: 20),
                   SizedBox(
                     height: 48,
@@ -109,73 +114,92 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
 
   Future<void> _register() async {
     final name = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Đăng ký đối tác'),
-        content: TextField(
-          controller: name,
-          decoration: const InputDecoration(labelText: 'Họ và tên'),
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Đăng ký đối tác'),
+          content: TextField(
+            controller: name,
+            autofocus: true,
+            textInputAction: TextInputAction.done,
+            decoration: const InputDecoration(labelText: 'Họ và tên'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Đăng ký'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Đăng ký'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true &&
-        name.text.trim().isNotEmpty &&
-        phone.text.trim().isNotEmpty &&
-        password.text.isNotEmpty) {
+      );
+      if (confirmed != true) return;
+      if (name.text.trim().isEmpty ||
+          phone.text.trim().isEmpty ||
+          password.text.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Nhập đủ họ tên, số điện thoại và mật khẩu.'),
+            ),
+          );
+        }
+        return;
+      }
       await widget.controller.register(
         name: name.text.trim(),
         phone: phone.text.trim(),
         password: password.text,
       );
-      if (mounted) await _verify();
+      if (mounted && widget.controller.error == null) await _verify();
+    } finally {
+      name.dispose();
     }
-    name.dispose();
   }
 
   Future<void> _verify() async {
     if (phone.text.trim().isEmpty) return;
     final code = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Xác minh tài khoản'),
-        content: TextField(
-          controller: code,
-          maxLength: 6,
-          keyboardType: TextInputType.number,
-          decoration: const InputDecoration(labelText: 'Mã OTP'),
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Xác minh tài khoản'),
+          content: TextField(
+            controller: code,
+            maxLength: 6,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Mã OTP'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => widget.controller.resendPhone(phone.text.trim()),
+              child: const Text('Gửi lại'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Xác minh'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => widget.controller.resendPhone(phone.text.trim()),
-            child: const Text('Gửi lại'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Xác minh'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await widget.controller.verifyPhone(phone.text.trim(), code.text.trim());
+      );
+      if (confirmed == true) {
+        await widget.controller.verifyPhone(
+          phone.text.trim(),
+          code.text.trim(),
+        );
+      }
+    } finally {
+      code.dispose();
     }
-    code.dispose();
   }
 
   Future<void> _forgot() async {
@@ -184,45 +208,48 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
     if (widget.controller.error != null || !mounted) return;
     final code = TextEditingController();
     final nextPassword = TextEditingController();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Đặt lại mật khẩu'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: code,
-              maxLength: 6,
-              decoration: const InputDecoration(labelText: 'Mã OTP'),
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: const Text('Đặt lại mật khẩu'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: code,
+                maxLength: 6,
+                decoration: const InputDecoration(labelText: 'Mã OTP'),
+              ),
+              TextField(
+                controller: nextPassword,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Hủy'),
             ),
-            TextField(
-              controller: nextPassword,
-              obscureText: true,
-              decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Cập nhật'),
             ),
           ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Hủy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Cập nhật'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      await widget.controller.resetPassword(
-        phone: phone.text.trim(),
-        code: code.text.trim(),
-        password: nextPassword.text,
       );
+      if (confirmed == true) {
+        await widget.controller.resetPassword(
+          phone: phone.text.trim(),
+          code: code.text.trim(),
+          password: nextPassword.text,
+        );
+      }
+    } finally {
+      code.dispose();
+      nextPassword.dispose();
     }
-    code.dispose();
-    nextPassword.dispose();
   }
 }

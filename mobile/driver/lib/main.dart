@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'api/driver_api.dart';
 import 'api/driver_realtime.dart';
+import 'api/goong_navigation_api.dart';
 import 'api/session_store.dart';
 import 'presentation/driver_app.dart';
 
@@ -15,6 +16,7 @@ Future<void> main() async {
   final onboarding = await sessionStore.readOnboarding();
   final deviceId = await sessionStore.installationId();
   const configured = String.fromEnvironment('API_BASE_URL');
+  const goongApiKey = String.fromEnvironment('GOONG_API_KEY');
   final defaultUrl = defaultTargetPlatform == TargetPlatform.android
       ? 'http://10.0.2.2:8000/api/v1'
       : 'http://127.0.0.1:8000/api/v1';
@@ -22,6 +24,7 @@ Future<void> main() async {
   runApp(
     DriverApp(
       gateway: DriverApi(deviceId: deviceId),
+      goong: GoongNavigationApi(apiKey: goongApiKey),
       sessionStore: sessionStore,
       realtime: DriverRealtime(),
       initialSession: DriverSession(

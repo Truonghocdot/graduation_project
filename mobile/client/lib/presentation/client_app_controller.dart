@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 
 import '../api/booking_api.dart';
 import '../api/booking_realtime.dart';
+import '../api/client_location.dart';
+import '../api/goong_location_api.dart';
 import '../api/request_id.dart';
 import '../api/session_store.dart';
 
@@ -11,11 +13,15 @@ class ClientAppController extends ChangeNotifier {
   ClientAppController({
     required this.gateway,
     required BookingSession initialSession,
+    this.locationSource,
+    this.goong,
     this.sessionStore,
     this.realtime,
   }) : _session = initialSession;
 
   final BookingGateway gateway;
+  final ClientLocationSource? locationSource;
+  final GoongLocationApi? goong;
   final BookingSessionStore? sessionStore;
   final BookingRealtime? realtime;
 
@@ -30,13 +36,47 @@ class ClientAppController extends ChangeNotifier {
   bool initializing = true;
   bool busy = false;
   String? error;
+  ClientPosition? currentPosition;
+  String? locationError;
   String? _createKey;
   String? _cancelKey;
   Timer? _snapshotTimer;
   Timer? _authTimer;
+  bool _disposed = false;
 
   BookingSession get session => _session;
   bool get authenticated => _session.token.isNotEmpty;
+
+  Future<void> prepareLocation() async {
+    final source = locationSource;
+    if (source == null) return;
+    try {
+      if (source case final DeviceClientLocationSource deviceSource) {
+        await deviceSource.prepare();
+      }
+      currentPosition = await source.current();
+      locationError = null;
+    } catch (exception) {
+      locationError = exception.toString();
+    }
+    if (!_disposed) notifyListeners();
+  }
+
+  Future<ClientPosition?> refreshLocation() async {
+    final source = locationSource;
+    if (source == null) return currentPosition;
+    try {
+      currentPosition = await source.current();
+      locationError = null;
+      if (!_disposed) notifyListeners();
+      return currentPosition;
+    } catch (exception) {
+      locationError = exception.toString();
+      if (!_disposed) notifyListeners();
+      return null;
+    }
+  }
+
   BookingSupportGateway? get supportGateway => gateway is BookingSupportGateway
       ? gateway as BookingSupportGateway
       : null;
@@ -389,9 +429,11 @@ class ClientAppController extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     _snapshotTimer?.cancel();
     _authTimer?.cancel();
     realtime?.dispose();
+    goong?.dispose();
     super.dispose();
   }
 }

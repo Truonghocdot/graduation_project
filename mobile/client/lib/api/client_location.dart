@@ -1,24 +1,24 @@
 import 'package:geolocator/geolocator.dart';
 
-class DriverPosition {
-  const DriverPosition(this.latitude, this.longitude, this.accuracy);
+class ClientPosition {
+  const ClientPosition(this.latitude, this.longitude, this.accuracy);
 
   final double latitude;
   final double longitude;
   final double accuracy;
 }
 
-abstract class DriverLocationSource {
-  Future<DriverPosition> current();
+abstract interface class ClientLocationSource {
+  Future<ClientPosition> current();
 }
 
-class DeviceLocationSource implements DriverLocationSource {
+class DeviceClientLocationSource implements ClientLocationSource {
   Future<void> prepare() async {
     await _ensurePermission();
   }
 
   @override
-  Future<DriverPosition> current() async {
+  Future<ClientPosition> current() async {
     await _ensurePermission();
     final position = await Geolocator.getCurrentPosition(
       locationSettings: const LocationSettings(
@@ -26,7 +26,7 @@ class DeviceLocationSource implements DriverLocationSource {
         timeLimit: Duration(seconds: 12),
       ),
     );
-    return DriverPosition(
+    return ClientPosition(
       position.latitude,
       position.longitude,
       position.accuracy,
@@ -35,7 +35,7 @@ class DeviceLocationSource implements DriverLocationSource {
 
   Future<void> _ensurePermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
-      throw StateError('Hãy bật dịch vụ định vị trên thiết bị.');
+      throw StateError('Hãy bật dịch vụ định vị trên thiết bị.');
     }
     var permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
@@ -43,7 +43,9 @@ class DeviceLocationSource implements DriverLocationSource {
     }
     if (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
-      throw StateError('Hãy cấp quyền vị trí để nhận và thực hiện chuyến đi.');
+      throw StateError(
+        'Cần cấp quyền vị trí để chọn điểm đón và theo dõi chuyến.',
+      );
     }
   }
 }
