@@ -94,5 +94,5 @@ Các bảng framework `personal_access_tokens`, `jobs`, `job_batches`, `failed_j
 2. Wallet balance cache, ledger transaction và ledger entries ghi nguyên tử.
 3. Tạo order/booking, trừ ví, dùng voucher và ghi outbox là một transaction logic; nếu tách provider call thì dùng state machine + idempotency.
 4. Accept offer khóa service request và driver; chỉ một assignment active được commit.
-5. Publish RabbitMQ chỉ sau commit thông qua outbox.
+5. Publish Redis Pub/Sub chỉ sau commit thông qua outbox.
 6. Webhook SePay, command hoàn thành, settlement, refund và withdrawal đều có idempotency key/unique provider reference.

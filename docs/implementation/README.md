@@ -10,7 +10,7 @@
 |---|---|---|
 | `worker/` | Database, domain logic, state machine, API `/api/v1`, auth, policy, queue/outbox, transaction, audit | Socket connection tần suất cao, UI mobile |
 | `worker/app/Filament/` | Site quản trị: duyệt, cấu hình, giám sát, support, điều chỉnh có audit | Logic nghiệp vụ riêng; luôn gọi Action/Service dùng chung với API |
-| `service/` | Socket.IO gateway, Redis presence/last location/geo index, RabbitMQ consumer/publisher, room/event delivery | Nguồn dữ liệu chuẩn, payment, state transition, quyền admin |
+| `service/` | Socket.IO gateway, Redis presence/last location/geo index, Redis Pub/Sub consumer, room/event delivery | Nguồn dữ liệu chuẩn, payment, state transition, quyền admin |
 | `mobile/client/` | UI/state/API client của khách, wallet/voucher, Delivery/Drive, support | Tính giá chuẩn, quyết định trạng thái, ghi database |
 | `mobile/driver/` | UI/state/API client tài xế, onboarding, offer, location, thực hiện chuyến/đơn | Matching winner, settlement, wallet ledger, quyền admin |
 
@@ -191,7 +191,7 @@ Filament action không được tự `DB::table(...)->update()` để bỏ qua d
 - `matching:dispatch` kích hoạt request `SCHEDULED` đến hạn trước khi tạo offer batch.
 - Offer batch lọc theo presence, capability, vehicle, status và COD; accept khóa request trước khi tạo assignment.
 - Outbox events: `OFFER_CREATED`, `OFFER_EXPIRED`, `DRIVER_ASSIGNED`, matching restart/cancel.
-- Redis GEO/presence interface, TTL và event envelope cho Redis Pub/Sub/RabbitMQ.
+- Redis GEO/presence interface, TTL và event envelope cho Redis Pub/Sub.
 - Driver offer API và customer snapshot API là nguồn khôi phục state sau reconnect.
 
 ### Filament
@@ -206,11 +206,11 @@ Filament action không được tự `DB::table(...)->update()` để bỏ qua d
 | HTTP health/config | `service/src/server.ts` hoặc `service/src/http/` |
 | Socket.IO auth/rooms | `service/src/realtime/` |
 | Redis presence/GEO | `service/src/presence/` |
-| RabbitMQ consumer/publisher | `service/src/messaging/` |
+| Redis Pub/Sub consumer | `service/src/messaging/redisEventConsumer.ts` |
 | Event envelope/schema | `service/src/contracts/` |
 | Unit/integration tests | `service/src/**/*.test.ts` hoặc `service/test/` |
 
-Service đã có health endpoint, Redis/RabbitMQ consumer, Socket.IO room authorization và event dedupe/version guard. Nó không tạo assignment hoặc quyết định winner.
+Service đã có health endpoint, Redis Pub/Sub consumer, Socket.IO room authorization và event dedupe/version guard. Nó không tạo assignment hoặc quyết định winner.
 
 ### Client/driver
 
@@ -357,7 +357,7 @@ Hai app gọi API worker để quyết định trạng thái; Socket.IO chỉ b�
 
 ### Service
 
-- Health/readiness, RabbitMQ retry/DLQ, Redis TTL, structured logs và correlation ID.
+- Health/readiness, Redis queue retry, Redis TTL, structured logs và correlation ID.
 
 ### Mobile
 

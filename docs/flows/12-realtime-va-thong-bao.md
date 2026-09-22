@@ -14,8 +14,8 @@
 | Socket.IO | Trạng thái tức thời, vị trí, ETA, presence | Nguồn quyết định transition cuối cùng |
 | In-app chat | Tin nhắn giữa khách và tài xế trong đơn/chuyến active | Kênh quyết định trạng thái hoặc lưu thông tin thanh toán nhạy cảm |
 | Push notification | Đánh thức app/thông báo khi background hoặc mất socket | Bảo đảm thứ tự event |
-| RabbitMQ | Chuyển event giữa backend và realtime worker | Database nghiệp vụ |
-| Redis | Presence, room metadata, vị trí gần nhất, geo search, lock/cache ngắn | Lịch sử chuẩn dài hạn |
+| Redis Pub/Sub | Chuyển event giữa backend và realtime worker | Database nghiệp vụ |
+| Redis queue/cache | Queue job, presence, room metadata, vị trí gần nhất, geo search, lock/cache ngắn | Lịch sử chuẩn dài hạn |
 
 ## Xác thực và room
 
@@ -33,7 +33,7 @@ Thông báo in-app được lưu trong `notifications`; Socket.IO phát `notific
 ## Luồng A - Phát trạng thái
 
 1. Laravel commit transition và outbox record.
-2. Publisher gửi domain event vào RabbitMQ với `event_id`, `aggregate_id`, `aggregate_version`, `occurred_at`.
+2. Publisher gửi domain event vào Redis Pub/Sub với `event_id`, `aggregate_id`, `aggregate_version`, `occurred_at`.
 3. Realtime service consume và deduplicate event.
 4. Service phát event vào room liên quan.
 5. Client chỉ áp dụng event có version mới hơn state đang giữ.
@@ -77,7 +77,7 @@ Payload gửi client chỉ chứa dữ liệu cần hiển thị. Event nội b�
 - Consumer xử lý at-least-once, do đó mọi handler phải idempotent.
 - `event_id` có kho dedup/unique phù hợp.
 - `aggregate_version` xử lý event đến sai thứ tự.
-- Dead-letter queue cho event lỗi quá số lần retry; có cảnh báo và replay có kiểm soát.
+- Outbox record lỗi được đánh dấu `FAILED`, tăng backoff và replay có kiểm soát từ Redis Pub/Sub.
 - Outbox bảo đảm không mất event giữa database commit và publish.
 - Correlation id đi xuyên API, outbox, queue và log.
 
@@ -102,4 +102,4 @@ Tên public event có thể thêm namespace/version (`delivery.picked_up.v1`) kh
 - Vị trí hết TTL loại tài xế khỏi matching.
 - Server rate limit và Redis TTL phải tương thích với chu kỳ vị trí 1,5 giây.
 - Database chỉ có một snapshot vị trí cuối trên mỗi tài xế; không phát sinh bản ghi lịch sử theo từng sample.
-- RabbitMQ/realtime tạm ngừng không làm mất transaction nghiệp vụ; event được phát lại từ outbox.
+- Redis/realtime tạm ngừng không làm mất transaction nghiệp vụ; event được phát lại từ outbox.

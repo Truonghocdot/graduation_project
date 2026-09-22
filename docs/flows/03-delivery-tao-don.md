@@ -55,7 +55,7 @@ sequenceDiagram
     participant API as Laravel API
     participant M as Map/Pricing
     participant W as Wallet/Voucher
-    participant Q as RabbitMQ
+    participant R as Redis Pub/Sub
     C->>API: Yêu cầu báo giá
     API->>M: Route + ETA + pricing
     M-->>API: Route snapshot + breakdown
@@ -65,7 +65,7 @@ sequenceDiagram
     W-->>API: Payment transaction thành công
     API->>API: Tạo order + outbox trong transaction
     API-->>C: order, SEARCHING_DRIVER/SCHEDULED
-    API->>Q: DELIVERY_SEARCH_REQUESTED khi đến thời điểm
+    API->>R: DELIVERY_SEARCH_REQUESTED khi đến thời điểm
 ```
 
 ## Nhánh lỗi

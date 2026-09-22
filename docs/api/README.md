@@ -540,7 +540,7 @@ Snapshot authoritative cho customer reconnect sau khi mất Socket event. Chỉ 
 ### Realtime contract
 
 - Worker ghi transactional outbox và command `outbox:publish` phát envelope vào Redis channel `worker.outbox`.
-- `service/` có thể nhận Redis Pub/Sub và RabbitMQ khi cấu hình.
+- `service/` nhận event qua Redis Pub/Sub trên các channel cấu hình bằng `MATCHING_OUTBOX_CHANNEL` và `DRIVER_LOCATION_CHANNEL`.
 - Socket room: `service-request:{public_id}`; handshake token được xác thực qua `GET /me` và mỗi join được worker xác nhận owner qua snapshot API.
 - Event `booking:event` chứa `event_id`, `event_type`, `aggregate_version`, `payload`, `occurred_at`.
 - Service bỏ event trùng và event có version thấp hơn version đã phát.

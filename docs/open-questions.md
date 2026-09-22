@@ -11,7 +11,7 @@ Các câu hỏi nghiệp vụ đã được trả lời. Tài liệu này là de
 | ID | Quyết định | Tác động chính |
 |---|---|---|
 | D-01 | Có hai ứng dụng riêng: một app khách hàng và một app tài xế | Tách navigation, permission, release và push topic; dùng chung API contract |
-| D-02 | `worker/` là Laravel API chính, trang quản trị và nơi publish/consume message qua RabbitMQ | Laravel sở hữu transaction nghiệp vụ và outbox |
+| D-02 | `worker/` là Laravel API chính, trang quản trị và nơi xử lý queue/publish event qua Redis | Laravel sở hữu transaction nghiệp vụ và outbox |
 | D-03 | Dùng [Goong API](https://help.goong.io/) để lấy vị trí, geocode, route, quãng đường và ETA | Cần adapter, cache và xử lý quota/lỗi provider |
 | D-04 | Email chỉ là thông tin hồ sơ, không dùng để xác thực | Không cấp credential, OTP hoặc luồng khôi phục qua email |
 | D-05 | OTP dùng để xác minh số điện thoại ban đầu; sau đó đăng nhập bằng số điện thoại + mật khẩu | Cần flow verify phone, login password và reset password qua số điện thoại |

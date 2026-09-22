@@ -28,11 +28,10 @@ Hai dịch vụ dùng chung nền tảng API, định vị, ghép tài xế, tha
 | Mobile khách hàng (Flutter) | Tạo/theo dõi đơn-chuyến, ví, voucher, chat và hỗ trợ |
 | Mobile tài xế (Flutter) | Hồ sơ tài xế, online, nhận offer, thực hiện đơn-chuyến và ví thu nhập |
 | `worker/` (Laravel) | API nghiệp vụ, authentication, dữ liệu giao dịch, admin/back-office, queue jobs |
-| RabbitMQ integration trong `worker/` | Laravel publish/consume message nghiệp vụ bằng outbox/consumer idempotent |
-| `service/` (Node.js) | Socket.IO gateway, ingest vị trí và trạng thái hiện diện; dùng Redis và nhận event qua RabbitMQ |
+| Redis queue/outbox trong `worker/` | Laravel xử lý job nền và publish event qua Redis Pub/Sub sau transaction |
+| `service/` (Node.js) | Socket.IO gateway, ingest vị trí và trạng thái hiện diện; nhận event qua Redis Pub/Sub |
 | Database chính | Nguồn dữ liệu chuẩn cho user, driver, booking/order, wallet ledger, voucher và audit |
-| Redis | Presence, vị trí gần nhất, distributed lock, cache ngắn hạn |
-| RabbitMQ | Event giữa Laravel và realtime service; retry tác vụ bất đồng bộ |
+| Redis | Queue job, event Pub/Sub, presence, vị trí gần nhất, distributed lock, cache ngắn hạn |
 
 Nguyên tắc sở hữu dữ liệu: Redis và Socket.IO không phải nguồn dữ liệu chuẩn. Trạng thái cuối cùng của đơn/chuyến chỉ hợp lệ sau khi được Laravel ghi transaction thành công vào database.
 
@@ -44,9 +43,8 @@ flowchart LR
     D <-->|Socket.IO + location| RT
     A[Admin] --> API
     API --> DB[(Primary DB)]
-    API <--> MQ[(RabbitMQ)]
-    RT <--> MQ
-    RT <--> R[(Redis)]
+    API <--> R[(Redis)]
+    RT <--> R
     API --> MAP[Goong API]
     API --> TOPUP[Kênh nạp tiền vào ví]
     API --> NOTI[Push/SMS]

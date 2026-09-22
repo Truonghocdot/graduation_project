@@ -182,7 +182,7 @@ Partial index publisher: `(available_at, id) WHERE status IN ('PENDING','FAILED'
 
 ### `inbox_messages`
 
-RabbitMQ consumer dedup.
+Redis Pub/Sub consumer dedup.
 
 | Cột | Kiểu | Null | Key | Ý nghĩa |
 |---|---|---:|---|---|

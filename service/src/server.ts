@@ -6,15 +6,12 @@ import { Server } from 'socket.io';
 
 import { WorkerAuthorizer } from './auth/workerAuthorizer.js';
 import { RedisEventConsumer } from './messaging/redisEventConsumer.js';
-import { RabbitEventConsumer } from './messaging/rabbitEventConsumer.js';
 import { RoomGateway } from './realtime/roomGateway.js';
 
 const port = Number(process.env.SERVICE_PORT ?? 3000);
 const redisUrl = process.env.REDIS_URL ?? 'redis://127.0.0.1:6379';
 const eventChannel = process.env.MATCHING_OUTBOX_CHANNEL ?? 'worker.outbox';
 const locationChannel = process.env.DRIVER_LOCATION_CHANNEL ?? 'worker.location';
-const rabbitUrl = process.env.RABBITMQ_URL;
-const rabbitQueue = process.env.RABBITMQ_QUEUE ?? 'service.realtime';
 const workerApiUrl = process.env.WORKER_API_URL ?? 'http://127.0.0.1:8000/api/v1';
 
 const app = express();
@@ -54,15 +51,9 @@ const handleEvent = async (event: Parameters<RoomGateway['publish']>[0]): Promis
 };
 const redisConsumer = new RedisEventConsumer(redisUrl, eventChannel, handleEvent);
 const locationConsumer = new RedisEventConsumer(redisUrl, locationChannel, handleEvent);
-const rabbitConsumer = rabbitUrl
-  ? new RabbitEventConsumer(rabbitUrl, rabbitQueue, handleEvent)
-  : undefined;
 
 await redisConsumer.start();
 await locationConsumer.start();
-if (rabbitConsumer) {
-  await rabbitConsumer.start();
-}
 
 server.listen(port, () => {
   console.log('Realtime service listening on http://127.0.0.1:' + port);
@@ -71,7 +62,6 @@ server.listen(port, () => {
 const shutdown = async (): Promise<void> => {
   await redisConsumer.stop();
   await locationConsumer.stop();
-  await rabbitConsumer?.stop();
   io.close();
   server.close();
 };
