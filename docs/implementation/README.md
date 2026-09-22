@@ -325,16 +325,19 @@ Hai app gọi API worker để quyết định trạng thái; Socket.IO chỉ b�
 
 - `lib/api/booking_api.dart`: login/register/verify/resend OTP, quên/đặt lại mật khẩu, catalog, quote, tạo/hủy Delivery/Drive, ví/nạp tiền, ticket/reply, chat, SOS, rating và notification.
 - `lib/api/session_store.dart`: giữ token, ID bản cài và ID yêu cầu gần nhất trong secure storage; logout gọi worker thu hồi token rồi xóa phiên cục bộ, lỗi `401` cũng xóa phiên.
-- `lib/api/booking_realtime.dart`: nhận `booking:event`/`notification:event`, join lại booking room khi reconnect; `lib/booking_app.dart` đồng bộ lại snapshot qua API và có polling fallback.
+- `lib/api/booking_realtime.dart`: nhận `booking:event`/`notification:event`, join lại booking room khi reconnect; `lib/presentation/client_app_controller.dart` đồng bộ snapshot qua API và có polling fallback.
 - `lib/api/api_transport_web.dart`: trả cả JSON lỗi `401/422` cho UI xử lý; không coi HTTP lỗi nghiệp vụ là lỗi kết nối.
-- UI có đăng ký/xác minh/reset, chọn xe, báo giá/thanh toán, chuyến gần nhất, wallet/top-up, ticket, chat, SOS, rating và notification.
+- `lib/presentation/pages/`: auth, bottom navigation, home, create/checkout/tracking/history/detail, chat, profile/rating theo [customer mobile structure](../mobile/client/README.md). `main.dart` chỉ bootstrap dependency.
+- `GET /service-requests` cung cấp history read-model có owner isolation; UI không dựng lịch sử giả từ local state.
 
 ### Phase 10 - `mobile/driver/`
 
 - `lib/api/driver_api.dart`: phiên onboarding bằng `CUSTOMER_APP` khi chưa được duyệt; đăng nhập lại `DRIVER_APP` sau duyệt. Có hồ sơ, xe, multipart giấy tờ/evidence, catalog, availability, location, offer, execution, ngân hàng/rút tiền và support.
 - `lib/api/device_location.dart`: xin quyền vị trí, lấy GPS thật; không gửi tọa độ điểm đón/điểm trả giả làm vị trí hiện tại. Manifest Android và Info.plist iOS khai báo quyền dùng khi app mở.
-- `lib/main.dart`: màn hình hồ sơ trước duyệt; sau duyệt có bật/tắt nhận chuyến, GPS heartbeat khi rảnh, location snapshot khi đang có assignment, bằng chứng pickup/delivery, xác nhận cash/COD, thu nhập và ngân hàng.
+- `lib/presentation/driver_app_controller.dart`: điều phối KYC, GPS heartbeat, offer, active job, evidence, finance và support; `main.dart` chỉ bootstrap dependency.
+- `lib/presentation/pages/`: auth/KYC, bottom navigation, home/offer dialog, active job/update/chat, wallet/withdraw, history và profile theo [driver mobile structure](../mobile/driver/README.md).
 - `lib/api/driver_realtime.dart` và `lib/api/session_store.dart`: join lại booking room, nạp lại offer sau reconnect, lưu phiên và xóa khi logout/`401`.
+- `GET /driver/history` cung cấp closed-assignment read-model; offer `ACCEPTED` đã đóng bị loại khỏi active feed.
 - Worker `DriverAvailabilityService` đã sửa presence: chỉ ghi Redis khi online, xóa Redis khi offline. Heartbeat online gia hạn TTL 15 giây; `/driver/location` chỉ dùng cho assignment active.
 
 ### Gate đã kiểm tra

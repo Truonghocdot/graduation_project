@@ -5,6 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   testWidgets('logs in lists and accepts an offer', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final gateway = FakeDriverGateway();
     await tester.pumpWidget(
       DriverApp(
@@ -27,14 +31,15 @@ void main() {
     await tester.tap(find.byKey(const Key('driver-login-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('DELIVERY'), findsOneWidget);
-    expect(find.text('Nhận chuyến'), findsOneWidget);
+    expect(find.text('DELIVERY'), findsWidgets);
+    expect(find.text('Đề nghị mới'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('accept-offer-1')));
     await tester.pumpAndSettle();
 
-    expect(find.text('ACCEPTED'), findsOneWidget);
+    expect(find.text('Tiếp tục chuyến đang chạy'), findsOneWidget);
     expect(gateway.respondCalls, 1);
+    expect(tester.takeException(), isNull);
   });
 }
 

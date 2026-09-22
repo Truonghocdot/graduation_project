@@ -87,6 +87,15 @@ void main() {
     },
   );
 
+  test('parses the customer order history read model', () async {
+    final api = BookingApi(transport: CustomerTransport());
+    final history = await api.loadServiceRequests(session);
+
+    expect(history.single.id, 'request-history-1');
+    expect(history.single.pickupAddress, 'Pickup address');
+    expect(history.single.dropoffAddress, 'Dropoff address');
+  });
+
   test('generates unique RFC 4122 version 4 ids', () {
     final ids = List.generate(50, (_) => newRequestId());
     expect(ids.toSet().length, ids.length);
@@ -211,6 +220,37 @@ class CustomerTransport implements ApiTransport {
               },
             ],
           },
+        },
+      );
+    }
+    if (uri.path.endsWith('/service-requests')) {
+      return const ApiResponse(
+        statusCode: 200,
+        body: {
+          'data': [
+            {
+              'id': 'request-history-1',
+              'service_type': 'DELIVERY',
+              'status': 'COMPLETED',
+              'booking_type': 'NOW',
+              'payment': {'method': 'CASH', 'customer_payable': 18000},
+              'stops': [
+                {
+                  'type': 'PICKUP',
+                  'address': 'Pickup address',
+                  'latitude': 10.77,
+                  'longitude': 106.68,
+                },
+                {
+                  'type': 'DROPOFF',
+                  'address': 'Dropoff address',
+                  'latitude': 10.78,
+                  'longitude': 106.69,
+                },
+              ],
+              'created_at': '2026-09-22T00:00:00Z',
+            },
+          ],
         },
       );
     }

@@ -129,6 +129,15 @@ void main() {
     },
   );
 
+  test('parses the closed driver job history read model', () async {
+    final api = DriverApi(transport: DriverOperationsTransport());
+    final history = await api.loadJobHistory(session);
+
+    expect(history.single.id, 'job-1');
+    expect(history.single.pickupAddress, 'Pickup address');
+    expect(history.single.driverNetEarning, 15000);
+  });
+
   test('generates unique RFC 4122 version 4 ids', () {
     final ids = List.generate(50, (_) => newRequestId());
     expect(ids.toSet().length, ids.length);
@@ -233,6 +242,27 @@ class DriverOperationsTransport implements ApiTransport, MultipartApiTransport {
       return const ApiResponse(200, {
         'data': [
           {'id': 'motorbike-1', 'name': 'Motorbike'},
+        ],
+      });
+    }
+    if (uri.path.endsWith('/driver/history')) {
+      return const ApiResponse(200, {
+        'data': [
+          {
+            'id': 'job-1',
+            'service_type': 'DRIVE',
+            'status': 'COMPLETED',
+            'payment': {
+              'method': 'CASH',
+              'customer_payable': 18000,
+              'settlement': {'driver_net_earning': 15000},
+            },
+            'stops': [
+              {'type': 'PICKUP', 'address': 'Pickup address'},
+              {'type': 'DROPOFF', 'address': 'Dropoff address'},
+            ],
+            'created_at': '2026-09-22T00:00:00Z',
+          },
         ],
       });
     }

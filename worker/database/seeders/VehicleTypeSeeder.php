@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\VehicleType;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 class VehicleTypeSeeder extends Seeder
 {
@@ -15,6 +16,7 @@ class VehicleTypeSeeder extends Seeder
         VehicleType::query()->updateOrCreate(
             ['unique_key' => 'MOTORBIKE'],
             [
+                'public_id' => (string) Str::uuid(),
                 'name' => 'Xe máy',
                 'passenger_capacity' => 1,
                 'max_weight_kg' => 30,
@@ -28,6 +30,7 @@ class VehicleTypeSeeder extends Seeder
         VehicleType::query()->updateOrCreate(
             ['unique_key' => 'CAR_4_SEAT'],
             [
+                'public_id' => (string) Str::uuid(),
                 'name' => 'Ô tô 4 chỗ',
                 'passenger_capacity' => 4,
                 'max_weight_kg' => 100,

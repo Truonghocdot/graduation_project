@@ -99,6 +99,7 @@ Các status thường gặp:
 | `POST` | `/rides/bookings` | `auth:sanctum` + `Idempotency-Key` | 4 |
 | `POST` | `/service-requests/{serviceRequest}/cancel` | `auth:sanctum` + owner + `Idempotency-Key` | 4 |
 | `GET` | `/service-requests/{serviceRequest}` | `auth:sanctum` + owner | 5 |
+| `GET` | `/service-requests` | `auth:sanctum` + owner history | 9 |
 | `GET` | `/driver/offers` | `auth:sanctum` + `role:DRIVER` | 5 |
 | `POST` | `/driver/offers/{driverOffer}/respond` | `auth:sanctum` + owner + `Idempotency-Key` | 5 |
 | `PUT` | `/driver/location` | `auth:sanctum` + `role:DRIVER` | 6 |
@@ -110,6 +111,7 @@ Các status thường gặp:
 | `POST` | `/webhooks/sepay` | `X-SePay-Secret` | 7 |
 | `GET, POST` | `/driver/bank-accounts` | `auth:sanctum` + `role:DRIVER` | 7 |
 | `GET, POST` | `/driver/withdrawals` | `auth:sanctum` + `role:DRIVER` | 7 |
+| `GET` | `/driver/history` | `auth:sanctum` + `role:DRIVER`, closed assignments | 10 |
 | `GET` | `/service-requests/{serviceRequest}/realtime-access` | customer/assigned driver/admin | 8 |
 | `GET, POST` | `/service-requests/{serviceRequest}/chat` | customer/assigned driver | 8 |
 | `GET` | `/chat/unread` | `auth:sanctum` | 8 |
@@ -637,6 +639,16 @@ Rating 1-2 sao duoc gan `FLAGGED` va tao outbox `LOW_RATING_FLAGGED`; khong tu d
 | `PUT` | `/notifications/{notification}/read` | Chi owner notification; tra resource trong `data` |
 
 Notification outbox chi phat `notification_id`, `user_id`, `type`; body chat va du lieu tai chinh khong duoc dua vao event realtime.
+
+## Phase 9-10 - Mobile read models
+
+### `GET /service-requests`
+
+Trả danh sách phân trang các request do customer hiện tại tạo, mới nhất trước. Resource gồm stops, payment/settlement, assignment và evidence để dựng tab đang chạy/đã hoàn thành. User khác không xuất hiện trong kết quả.
+
+### `GET /driver/history`
+
+Trả danh sách phân trang các service request có assignment `COMPLETED` hoặc `CANCELLED` thuộc driver hiện tại. Active assignment tiếp tục lấy qua `/driver/offers`; accepted offer đã đóng không còn xuất hiện trong feed active.
 
 ## Client integration checklist
 

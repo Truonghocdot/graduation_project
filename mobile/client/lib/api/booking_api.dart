@@ -164,6 +164,14 @@ class ServiceRequestSummary {
     required this.paymentMethod,
     required this.customerPayable,
     this.driverNetEarning,
+    this.bookingType = 'NOW',
+    this.pickupAddress,
+    this.dropoffAddress,
+    this.pickupLatitude,
+    this.pickupLongitude,
+    this.dropoffLatitude,
+    this.dropoffLongitude,
+    this.createdAt,
   });
 
   final String id;
@@ -172,10 +180,25 @@ class ServiceRequestSummary {
   final PaymentChoice paymentMethod;
   final double customerPayable;
   final double? driverNetEarning;
+  final String bookingType;
+  final String? pickupAddress;
+  final String? dropoffAddress;
+  final double? pickupLatitude;
+  final double? pickupLongitude;
+  final double? dropoffLatitude;
+  final double? dropoffLongitude;
+  final DateTime? createdAt;
 
   factory ServiceRequestSummary.fromJson(Map<String, dynamic> json) {
     final payment = json['payment'] as Map<String, dynamic>;
     final settlement = payment['settlement'];
+    final stops = (json['stops'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+    final pickup = stops.where((stop) => stop['type'] == 'PICKUP').firstOrNull;
+    final dropoff = stops
+        .where((stop) => stop['type'] == 'DROPOFF')
+        .firstOrNull;
 
     return ServiceRequestSummary(
       id: json['id'] as String,
@@ -190,6 +213,16 @@ class ServiceRequestSummary {
       driverNetEarning: settlement is Map<String, dynamic>
           ? (settlement['driver_net_earning'] as num?)?.toDouble()
           : null,
+      bookingType: json['booking_type']?.toString() ?? 'NOW',
+      pickupAddress: pickup?['address']?.toString(),
+      dropoffAddress: dropoff?['address']?.toString(),
+      pickupLatitude: (pickup?['latitude'] as num?)?.toDouble(),
+      pickupLongitude: (pickup?['longitude'] as num?)?.toDouble(),
+      dropoffLatitude: (dropoff?['latitude'] as num?)?.toDouble(),
+      dropoffLongitude: (dropoff?['longitude'] as num?)?.toDouble(),
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.parse(json['created_at'].toString()),
     );
   }
 }
@@ -428,8 +461,18 @@ abstract interface class BookingGateway {
   });
 }
 
+abstract interface class BookingHistoryGateway {
+  Future<List<ServiceRequestSummary>> loadServiceRequests(
+    BookingSession session,
+  );
+}
+
 class BookingApi
-    implements BookingGateway, BookingSupportGateway, CustomerAccountGateway {
+    implements
+        BookingGateway,
+        BookingSupportGateway,
+        CustomerAccountGateway,
+        BookingHistoryGateway {
   BookingApi({ApiTransport? transport, this.deviceId = 'customer-app-session'})
     : _transport = transport ?? createApiTransport();
 
@@ -719,6 +762,21 @@ class BookingApi
     );
 
     return ServiceRequestSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<List<ServiceRequestSummary>> loadServiceRequests(
+    BookingSession session,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/service-requests'),
+      token: session.token,
+    );
+
+    return _listData(response)
+        .map(ServiceRequestSummary.fromJson)
+        .toList(growable: false);
   }
 
   @override

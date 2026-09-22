@@ -2,6 +2,7 @@ import 'package:client/api/booking_api.dart';
 import 'package:client/booking_app.dart';
 import 'package:client/api/session_store.dart';
 import 'package:client/api/booking_realtime.dart';
+import 'package:client/presentation/pages/order/create_order_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -30,7 +31,10 @@ void main() {
     await tester.tap(find.byKey(const Key('login-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Đặt dịch vụ'), findsOneWidget);
+    expect(find.text('Trang chủ'), findsWidgets);
+    expect(find.text('Giao hàng'), findsOneWidget);
+    await tester.tap(find.text('Giao hàng'));
+    await tester.pumpAndSettle();
     expect(find.text('Xe máy'), findsOneWidget);
     expect(gateway.loginCalls, 1);
   });
@@ -47,23 +51,43 @@ void main() {
         ),
       ),
     );
+    await tester.pumpAndSettle();
 
-    expect(find.text('Đặt dịch vụ'), findsOneWidget);
-    expect(find.text('Delivery'), findsOneWidget);
+    expect(find.text('Trang chủ'), findsWidgets);
+    await tester.tap(find.text('Giao hàng'));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(
+      find.byKey(const Key('continue-service-button')),
+    );
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const Key('continue-service-button')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    tester
+        .widget<FilledButton>(find.byKey(const Key('continue-service-button')))
+        .onPressed!();
+    await tester.pumpAndSettle();
+    expect(find.byType(CreateOrderPage), findsOneWidget);
 
-    await tester.ensureVisible(find.byKey(const Key('quote-button')));
+    await tester.drag(find.byType(ListView).last, const Offset(0, -500));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quote-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Báo giá'), findsOneWidget);
+    expect(find.text('Xác nhận dịch vụ'), findsOneWidget);
     expect(find.text('18000 VND'), findsNWidgets(2));
     expect(gateway.quoteCalls, 1);
 
-    await tester.ensureVisible(find.byKey(const Key('create-button')));
+    await tester.drag(find.byType(ListView).last, const Offset(0, -300));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('create-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Mã yêu cầu'), findsOneWidget);
+    expect(find.text('request-uuid'), findsOneWidget);
     expect(find.text('SEARCHING_DRIVER'), findsOneWidget);
     expect(gateway.createCalls, 1);
 
@@ -94,9 +118,13 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.text('Mã yêu cầu'), findsOneWidget);
+      expect(find.text('Dịch vụ đang theo dõi'), findsOneWidget);
+      await tester.tap(find.text('Dịch vụ đang theo dõi'));
+      await tester.pumpAndSettle();
       expect(find.text('request-uuid'), findsOneWidget);
-      await tester.tap(find.byTooltip('Thêm'));
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Tài khoản'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Đăng xuất'));
       await tester.pumpAndSettle();
@@ -122,7 +150,9 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Ví lạnh'));
+    await tester.tap(find.text('Tài khoản'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ví lạnh'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });

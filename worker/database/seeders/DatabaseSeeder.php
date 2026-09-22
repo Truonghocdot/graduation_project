@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
         $user = User::factory()->create([
             'name' => 'Test User',
             'email' => 'test@example.com',
+            'public_id' => (string) \Illuminate\Support\Str::uuid(),
+            'password' => bcrypt('12345678'),
         ]);
 
         $customerRoleId = Role::query()

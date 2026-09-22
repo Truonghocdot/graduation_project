@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'api/booking_api.dart';
 import 'api/booking_realtime.dart';
 import 'api/session_store.dart';
-import 'booking_app.dart';
+import 'presentation/client_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

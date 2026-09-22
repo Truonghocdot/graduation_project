@@ -10,6 +10,10 @@ void main() {
   testWidgets('unapproved driver can create a draft without seeing offers', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final transport = DriverWidgetTransport();
     await tester.pumpWidget(
       DriverApp(
@@ -32,12 +36,13 @@ void main() {
     await tester.tap(find.byKey(const Key('driver-login-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Trạng thái: Chưa tạo hồ sơ'), findsOneWidget);
+    expect(find.text('Trạng thái: CHƯA TẠO'), findsOneWidget);
     expect(find.text('Nhận chuyến'), findsNothing);
     await tester.tap(find.text('Lưu hồ sơ'));
     await tester.pumpAndSettle();
     expect(find.text('Trạng thái: DRAFT'), findsOneWidget);
     expect(transport.draftSaved, isTrue);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('approved driver starts online with device coordinates', (
@@ -64,9 +69,9 @@ void main() {
 
     expect(transport.onlineLocation?['latitude'], 10.77);
     expect(transport.onlineLocation?['longitude'], 106.70);
-    expect(find.text('Nhận chuyến: ONLINE'), findsOneWidget);
+    expect(find.text('Đang nhận chuyến'), findsOneWidget);
     expect(tester.takeException(), isNull);
-    await tester.tap(find.byTooltip('Thu nhập và rút tiền'));
+    await tester.tap(find.text('Thu nhập'));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox());
@@ -94,7 +99,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(realtime.watchedRequest, 'request-1');
-    expect(find.text('ACCEPTED'), findsOneWidget);
+    expect(find.text('Tiếp tục chuyến đang chạy'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 
@@ -114,7 +119,7 @@ void main() {
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(transport.onlineLocation, isNull);
-    expect(find.text('Nhận chuyến: OFFLINE'), findsOneWidget);
+    expect(find.text('Đang ngoại tuyến'), findsOneWidget);
     expect(find.textContaining('Cần cấp quyền vị trí'), findsOneWidget);
   });
 }
@@ -226,6 +231,9 @@ class DriverWidgetTransport implements ApiTransport {
           ],
         });
       }
+      return const ApiResponse(200, {'data': []});
+    }
+    if (path.endsWith('/driver/history')) {
       return const ApiResponse(200, {'data': []});
     }
     if (path.endsWith('/wallet')) {

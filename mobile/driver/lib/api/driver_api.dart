@@ -258,6 +258,57 @@ class DriverWalletSummary {
   }
 }
 
+class DriverJobSummary {
+  const DriverJobSummary({
+    required this.id,
+    required this.serviceType,
+    required this.status,
+    required this.customerPayable,
+    required this.paymentMethod,
+    this.driverNetEarning,
+    this.pickupAddress,
+    this.dropoffAddress,
+    this.createdAt,
+  });
+
+  final String id;
+  final String serviceType;
+  final String status;
+  final double customerPayable;
+  final String paymentMethod;
+  final double? driverNetEarning;
+  final String? pickupAddress;
+  final String? dropoffAddress;
+  final DateTime? createdAt;
+
+  factory DriverJobSummary.fromJson(Map<String, dynamic> json) {
+    final payment = json['payment'] as Map<String, dynamic>;
+    final settlement = payment['settlement'];
+    final stops = (json['stops'] as List? ?? const [])
+        .whereType<Map<String, dynamic>>()
+        .toList(growable: false);
+    final pickup = stops.where((stop) => stop['type'] == 'PICKUP').firstOrNull;
+    final dropoff = stops
+        .where((stop) => stop['type'] == 'DROPOFF')
+        .firstOrNull;
+    return DriverJobSummary(
+      id: json['id'] as String,
+      serviceType: json['service_type'] as String,
+      status: json['status'] as String,
+      customerPayable: (payment['customer_payable'] as num).toDouble(),
+      paymentMethod: payment['method'] as String,
+      driverNetEarning: settlement is Map<String, dynamic>
+          ? (settlement['driver_net_earning'] as num?)?.toDouble()
+          : null,
+      pickupAddress: pickup?['address']?.toString(),
+      dropoffAddress: dropoff?['address']?.toString(),
+      createdAt: json['created_at'] == null
+          ? null
+          : DateTime.parse(json['created_at'].toString()),
+    );
+  }
+}
+
 class DriverBankAccountSummary {
   const DriverBankAccountSummary({
     required this.id,
@@ -433,8 +484,16 @@ abstract interface class DriverGateway {
   });
 }
 
+abstract interface class DriverHistoryGateway {
+  Future<List<DriverJobSummary>> loadJobHistory(DriverSession session);
+}
+
 class DriverApi
-    implements DriverGateway, DriverSupportGateway, DriverOperationsGateway {
+    implements
+        DriverGateway,
+        DriverSupportGateway,
+        DriverOperationsGateway,
+        DriverHistoryGateway {
   DriverApi({ApiTransport? transport, this.deviceId = 'driver-app-session'})
     : _transport = transport ?? createApiTransport();
 
@@ -904,6 +963,19 @@ class DriverApi
     return data
         .whereType<Map<String, dynamic>>()
         .map(DriverOfferSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<List<DriverJobSummary>> loadJobHistory(DriverSession session) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/driver/history'),
+      token: session.token,
+    );
+    _assertSuccess(response);
+    return _listData(response)
+        .map(DriverJobSummary.fromJson)
         .toList(growable: false);
   }
 
