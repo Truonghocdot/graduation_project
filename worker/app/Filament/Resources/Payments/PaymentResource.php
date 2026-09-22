@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Payments;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\Payments\Pages\ListPayments;
 use App\Filament\Resources\Payments\Pages\ViewPayment;
 use App\Filament\Resources\Payments\Schemas\PaymentInfolist;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class PaymentResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = Payment::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Finance';

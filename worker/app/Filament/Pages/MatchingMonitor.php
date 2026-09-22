@@ -2,8 +2,10 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\RoleKey;
 use App\Enums\ServiceRequestStatus;
 use App\Models\ServiceRequest;
+use App\Models\User;
 use BackedEnum;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -19,6 +21,13 @@ class MatchingMonitor extends Page
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSignal;
 
     protected string $view = 'filament.pages.matching-monitor';
+
+    public static function canAccess(): bool
+    {
+        $user = auth()->user();
+
+        return $user instanceof User && $user->hasRole(RoleKey::Admin);
+    }
 
     /** @return array<string, mixed> */
     protected function getViewData(): array

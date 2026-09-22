@@ -241,6 +241,84 @@ class WalletTopupSummary {
   }
 }
 
+class SupportChatMessage {
+  const SupportChatMessage({required this.senderName, required this.body});
+
+  final String senderName;
+  final String body;
+
+  factory SupportChatMessage.fromJson(Map<String, dynamic> json) {
+    final sender = json['sender'] as Map<String, dynamic>?;
+    return SupportChatMessage(
+      senderName: sender?['name']?.toString() ?? 'User',
+      body: json['body']?.toString() ?? '',
+    );
+  }
+}
+
+class AppNotificationSummary {
+  const AppNotificationSummary({
+    required this.id,
+    required this.type,
+    required this.isRead,
+  });
+
+  final String id;
+  final String type;
+  final bool isRead;
+
+  factory AppNotificationSummary.fromJson(Map<String, dynamic> json) {
+    return AppNotificationSummary(
+      id: json['id'] as String,
+      type: json['type'] as String,
+      isRead: json['read_at'] != null,
+    );
+  }
+}
+
+abstract interface class BookingSupportGateway {
+  Future<List<SupportChatMessage>> loadChat(
+    BookingSession session,
+    String serviceRequestId,
+  );
+
+  Future<void> sendChat({
+    required BookingSession session,
+    required String serviceRequestId,
+    required String body,
+  });
+
+  Future<void> createSupportTicket({
+    required BookingSession session,
+    required String serviceRequestId,
+    required String subject,
+    required String description,
+  });
+
+  Future<void> reportIncident({
+    required BookingSession session,
+    required String serviceRequestId,
+    required String incidentType,
+    String? description,
+  });
+
+  Future<void> submitRating({
+    required BookingSession session,
+    required String serviceRequestId,
+    required int score,
+    String? comment,
+  });
+
+  Future<List<AppNotificationSummary>> loadNotifications(
+    BookingSession session,
+  );
+
+  Future<void> markNotificationRead(
+    BookingSession session,
+    String notificationId,
+  );
+}
+
 abstract interface class BookingGateway {
   Future<String> login({
     required String baseUrl,
@@ -282,7 +360,7 @@ abstract interface class BookingGateway {
   });
 }
 
-class BookingApi implements BookingGateway {
+class BookingApi implements BookingGateway, BookingSupportGateway {
   BookingApi({ApiTransport? transport})
     : _transport = transport ?? createApiTransport();
 
@@ -454,6 +532,132 @@ class BookingApi implements BookingGateway {
     return WalletTopupSummary.fromJson(_data(response));
   }
 
+  @override
+  Future<List<SupportChatMessage>> loadChat(
+    BookingSession session,
+    String serviceRequestId,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/service-requests/$serviceRequestId/chat'),
+      token: session.token,
+    );
+
+    return _listData(response)
+        .map(SupportChatMessage.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> sendChat({
+    required BookingSession session,
+    required String serviceRequestId,
+    required String body,
+  }) async {
+    _data(
+      await _transport.send(
+        method: 'POST',
+        uri: _uri(session, '/service-requests/$serviceRequestId/chat'),
+        token: session.token,
+        body: {'client_message_id': _uuid(), 'body': body},
+      ),
+    );
+  }
+
+  @override
+  Future<void> createSupportTicket({
+    required BookingSession session,
+    required String serviceRequestId,
+    required String subject,
+    required String description,
+  }) async {
+    _data(
+      await _transport.send(
+        method: 'POST',
+        uri: _uri(session, '/support/tickets'),
+        token: session.token,
+        headers: {'Idempotency-Key': _uuid()},
+        body: {
+          'service_request_id': serviceRequestId,
+          'category': 'OTHER',
+          'subject': subject,
+          'description': description,
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<void> reportIncident({
+    required BookingSession session,
+    required String serviceRequestId,
+    required String incidentType,
+    String? description,
+  }) async {
+    _data(
+      await _transport.send(
+        method: 'POST',
+        uri: _uri(session, '/service-requests/$serviceRequestId/incidents'),
+        token: session.token,
+        headers: {'Idempotency-Key': _uuid()},
+        body: {
+          'incident_type': incidentType,
+          if (description?.trim().isNotEmpty ?? false)
+            'description': description!.trim(),
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<void> submitRating({
+    required BookingSession session,
+    required String serviceRequestId,
+    required int score,
+    String? comment,
+  }) async {
+    _data(
+      await _transport.send(
+        method: 'POST',
+        uri: _uri(session, '/service-requests/$serviceRequestId/ratings'),
+        token: session.token,
+        body: {
+          'score': score,
+          if (comment?.trim().isNotEmpty ?? false) 'comment': comment!.trim(),
+        },
+      ),
+    );
+  }
+
+  @override
+  Future<List<AppNotificationSummary>> loadNotifications(
+    BookingSession session,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/notifications'),
+      token: session.token,
+    );
+
+    return _listData(response)
+        .map(AppNotificationSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<void> markNotificationRead(
+    BookingSession session,
+    String notificationId,
+  ) async {
+    _data(
+      await _transport.send(
+        method: 'PUT',
+        uri: _uri(session, '/notifications/$notificationId/read'),
+        token: session.token,
+      ),
+    );
+  }
+
   Uri _uri(BookingSession session, String path) {
     return Uri.parse('${session.baseUrl.replaceFirst(RegExp(r'/$'), '')}$path');
   }
@@ -469,6 +673,25 @@ class BookingApi implements BookingGateway {
     }
 
     return data;
+  }
+
+  List<Map<String, dynamic>> _listData(ApiResponse response) {
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw BookingApiException.fromResponse(response);
+    }
+
+    final data = response.body['data'];
+    if (data is! List) {
+      throw const BookingApiException('Invalid server response.');
+    }
+
+    return data.whereType<Map<String, dynamic>>().toList(growable: false);
+  }
+
+  String _uuid() {
+    final value = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
+    final padded = value.padLeft(32, '0');
+    return '${padded.substring(0, 8)}-${padded.substring(8, 12)}-4${padded.substring(13, 16)}-a${padded.substring(17, 20)}-${padded.substring(20, 32)}';
   }
 }
 

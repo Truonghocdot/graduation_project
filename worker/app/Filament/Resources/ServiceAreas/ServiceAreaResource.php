@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ServiceAreas;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\ServiceAreas\Pages\CreateServiceArea;
 use App\Filament\Resources\ServiceAreas\Pages\EditServiceArea;
 use App\Filament\Resources\ServiceAreas\Pages\ListServiceAreas;
@@ -20,6 +21,8 @@ use UnitEnum;
 
 class ServiceAreaResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = ServiceArea::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Pricing';

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\PricingRules;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\PricingRules\Pages\CreatePricingRule;
 use App\Filament\Resources\PricingRules\Pages\EditPricingRule;
 use App\Filament\Resources\PricingRules\Pages\ListPricingRules;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class PricingRuleResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = PricingRule::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Pricing';

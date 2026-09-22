@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Settlements;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\Settlements\Pages\ListSettlements;
 use App\Filament\Resources\Settlements\Pages\ViewSettlement;
 use App\Filament\Resources\Settlements\Schemas\SettlementInfolist;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class SettlementResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = Settlement::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Finance';

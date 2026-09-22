@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ServiceRequests;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\ServiceRequests\Pages\ListServiceRequests;
 use App\Filament\Resources\ServiceRequests\Pages\ViewServiceRequest;
 use App\Filament\Resources\ServiceRequests\Schemas\ServiceRequestInfolist;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class ServiceRequestResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = ServiceRequest::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Operations';

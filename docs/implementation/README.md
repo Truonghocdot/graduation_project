@@ -39,7 +39,7 @@ Không viết nghiệp vụ độc lập trong `service`, client hoặc driver a
 | 5 | `COMPLETED` | Matching, offer, assignment, Redis GEO, realtime service và mobile offer flow |
 | 6 | `COMPLETED` | Delivery/Drive execution, private evidence, COD và location snapshot |
 | 7 | `COMPLETED` | Settlement, SePay top-up, withdrawal, refund và finance admin |
-| 8 | `PENDING` | Support, rating, incident, chat, notification và admin operations |
+| 8 | `COMPLETED` | Support, rating, incident, chat, notification persistence, Filament operations và mobile support actions |
 | 9 | `PENDING` | Customer app integration |
 | 10 | `PENDING` | Driver app integration |
 | 11 | `PENDING` | End-to-end hardening, demo seed và deployment guide |
@@ -284,30 +284,38 @@ Service đã có health endpoint, Redis/RabbitMQ consumer, Socket.IO room author
 - Webhook, settlement, top-up, withdrawal và refund có test idempotency/limit.
 - Voucher không tạo wallet credit; COD không đi vào settlement earning.
 
-## 11. Phase 8 - Support và Admin Operations
+## 11. Phase 8 - Support và Admin Operations - `COMPLETED`
 
 ### Worker
 
-- Ticket, rating, incident, audit, notification persistence.
-- Policies cho customer/driver/support/admin và private evidence.
+- Models/enums/services tại `app/Models/`, `app/Enums/`, `app/Services/Support/`, `app/Services/Chat/`, `app/Services/Notification/`.
+- API controllers/requests/resources tại `app/Http/Controllers/Api/V1/`, `app/Http/Requests/Api/V1/Support/`, `app/Http/Resources/Api/V1/`.
+- Ticket, rating, incident, chat message, notification persistence đã có idempotency phù hợp và outbox event.
+- Policies kiểm tra participant/assignee; attachment ticket và service evidence lưu private.
+- Support không có quyền sửa ledger; suspend user chỉ admin và bắt buộc reason + audit.
 
 ### Filament
 
-- Ticket queue/assignment/priority.
-- Incident/SOS review.
-- Rating moderation.
-- User/driver suspension và audit timeline.
+- `SupportTicketResource`: queue unassigned/assigned, claim, resolve, priority/status filter, message và finance snapshot.
+- `IncidentResource`: review/resolve SOS và incident với audit.
+- `RatingResource`: visible/hidden/flagged moderation với reason.
+- `UserResource`: admin-only suspension/revoke token và audit.
+- Support chỉ truy cập ticket queue của mình; finance/catalog/user resources bị chặn bởi role gate.
 
 ### Service/mobile
 
-- Service chat rooms, notification/push fallback và unread counters.
-- Customer/driver chat, support ticket và incident reporting UI.
+- `service/src/realtime/roomGateway.ts` và `src/auth/workerAuthorizer.ts`: user room xác thực từ `/me`, booking room authorization, notification event, dedupe/version guard.
+- `mobile/client/lib/api/booking_api.dart` và `mobile/driver/lib/api/driver_api.dart`: chat, ticket, incident, rating, notification/unread API contract.
+- Customer/driver UI có thao tác Chat, Hỗ trợ, SOS, Đánh giá và đánh dấu thông báo.
+- HTTPS API là fallback khi socket/push không sẵn sàng; notification payload không chứa body chat hay dữ liệu tài chính.
 
 ### Gate
 
 - Support không sửa ledger trực tiếp.
 - Admin action có reason/audit.
 - User không liên quan không đọc ticket/chat/evidence.
+- Worker tests: `PhaseEightSupportTest`, `PhaseEightChatNotificationTest`, `PhaseEightAuthorizationTest`, `FilamentSupportOperationsTest`.
+- Realtime tests: `service/src/realtime/roomGateway.test.ts`; mobile API/UI tests và `flutter analyze` pass.
 
 ## 12. Phase 9-10 - Mobile integration
 

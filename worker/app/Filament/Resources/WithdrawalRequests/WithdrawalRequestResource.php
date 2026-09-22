@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\WithdrawalRequests;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\WithdrawalRequests\Pages\ListWithdrawalRequests;
 use App\Filament\Resources\WithdrawalRequests\Pages\ViewWithdrawalRequest;
 use App\Filament\Resources\WithdrawalRequests\Schemas\WithdrawalRequestInfolist;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class WithdrawalRequestResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = WithdrawalRequest::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Finance';

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\VehicleTypes;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\VehicleTypes\Pages\CreateVehicleType;
 use App\Filament\Resources\VehicleTypes\Pages\EditVehicleType;
 use App\Filament\Resources\VehicleTypes\Pages\ListVehicleTypes;
@@ -21,6 +22,8 @@ use UnitEnum;
 
 class VehicleTypeResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = VehicleType::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Catalog';

@@ -2,9 +2,9 @@
 
 > Base path: `/api/v1`
 >
-> Trạng thái: **Implemented cho Phase 1 đến Phase 7**
+> Trạng thái: **Implemented cho Phase 1 đến Phase 8**
 
-Tài liệu này mô tả các API đang có trong `worker/routes/api.php`. Phase 3 bổ sung quote và Phase 4 bổ sung tạo/hủy Delivery/Drive cùng payment intent; matching, settlement và realtime nghiệp vụ vẫn thuộc các phase sau.
+Tài liệu này mô tả các API đang có trong `worker/routes/api.php`, từ xác thực, booking, execution và finance đến support, chat, incident, rating và notification của Phase 8.
 
 Nghiệp vụ quản trị không mở REST API. Admin đăng nhập và thao tác tại Filament `/admin`; Filament gọi trực tiếp domain service trong worker để duyệt/từ chối/khóa tài xế và ghi audit.
 
@@ -110,6 +110,17 @@ Các status thường gặp:
 | `POST` | `/webhooks/sepay` | `X-SePay-Secret` | 7 |
 | `GET, POST` | `/driver/bank-accounts` | `auth:sanctum` + `role:DRIVER` | 7 |
 | `GET, POST` | `/driver/withdrawals` | `auth:sanctum` + `role:DRIVER` | 7 |
+| `GET` | `/service-requests/{serviceRequest}/realtime-access` | customer/assigned driver/admin | 8 |
+| `GET, POST` | `/service-requests/{serviceRequest}/chat` | customer/assigned driver | 8 |
+| `GET` | `/chat/unread` | `auth:sanctum` | 8 |
+| `GET, POST` | `/support/tickets` | owner; `Idempotency-Key` khi POST | 8 |
+| `GET` | `/support/tickets/{supportTicket}` | owner/assigned support/admin | 8 |
+| `POST` | `/support/tickets/{supportTicket}/messages` | owner/assigned support/admin | 8 |
+| `GET` | `/support/attachments/{attachment}/file` | ticket authorization | 8 |
+| `GET, POST` | `/incidents`, `/service-requests/{serviceRequest}/incidents` | reporter/participant; `Idempotency-Key` khi POST | 8 |
+| `POST` | `/service-requests/{serviceRequest}/ratings` | participant + completed service | 8 |
+| `GET` | `/notifications`, `/notifications/unread` | owner | 8 |
+| `PUT` | `/notifications/{notification}/read` | owner | 8 |
 
 ## Phase 1 - Authentication
 
@@ -581,6 +592,51 @@ Terminal execution tự tạo settlement idempotent. WALLET ghi có phần khác
 - Complete tạo ledger withdrawal cân bằng; reject chỉ giải phóng reserved.
 
 Admin Finance có Wallet/Ledger, Payment, Settlement read-only; refund/withdrawal là action service có reason/audit. WALLET refund tạo ledger credit; CASH refund bắt buộc evidence thủ công.
+
+## Phase 8 - Support, chat, incident, rating va notification
+
+Tat ca endpoint duoi day yeu cau `auth:sanctum`. User chi doc duoc ticket, chat, incident va attachment ma minh la participant; support/admin dung Filament cho thao tac van hanh.
+
+### Chat theo chuyen
+
+| Method | Endpoint | Contract |
+|---|---|---|
+| `GET` | `/service-requests/{serviceRequest}/chat` | Customer/assigned driver; tra danh sach message va dong dau message cua doi phuong la da doc |
+| `POST` | `/service-requests/{serviceRequest}/chat` | `client_message_id` UUID, `body`; idempotent theo conversation |
+| `GET` | `/chat/unread` | Tra `data.unread_count` cua user hien tai |
+| `GET` | `/service-requests/{serviceRequest}/realtime-access` | Probe `204` cho customer, assigned driver hoac admin; realtime service dung de authorize room |
+
+### Support ticket
+
+| Method | Endpoint | Contract |
+|---|---|---|
+| `GET` | `/support/tickets` | Danh sach ticket do user hien tai mo |
+| `POST` | `/support/tickets` | Bat buoc `Idempotency-Key`; `category`, `subject`, `description`, optional `service_request_id` va private attachment |
+| `GET` | `/support/tickets/{supportTicket}` | Owner, assignee support hoac admin; user khong lien quan nhan `404` |
+| `POST` | `/support/tickets/{supportTicket}/messages` | Owner/assignee/admin gui message; optional private attachment |
+| `GET` | `/support/attachments/{attachment}/file` | Authenticated download theo ticket authorization, khong public URL |
+
+`category` nhan `PRICING`, `PAYMENT`, `ATTITUDE`, `LOST_ITEM`, `DAMAGE`, `SAFETY`, `OTHER`. Ticket `SAFETY`/`LOST_ITEM` duoc uu tien `HIGH`.
+
+### Incident va rating
+
+| Method | Endpoint | Contract |
+|---|---|---|
+| `POST` | `/service-requests/{serviceRequest}/incidents` | Bat buoc `Idempotency-Key`; `incident_type`, optional description/location/evidence ids; SOS duoc uu tien `CRITICAL` |
+| `GET` | `/incidents` | Chi incident do user hien tai bao cao |
+| `POST` | `/service-requests/{serviceRequest}/ratings` | Sau khi hoan tat; `score` 1-5, optional `tags`/`comment`; moi actor chi danh gia mot chieu |
+
+Rating 1-2 sao duoc gan `FLAGGED` va tao outbox `LOW_RATING_FLAGGED`; khong tu dong sua settlement.
+
+### Notification
+
+| Method | Endpoint | Contract |
+|---|---|---|
+| `GET` | `/notifications` | Danh sach notification cua user hien tai |
+| `GET` | `/notifications/unread` | Tra `data.unread_count` |
+| `PUT` | `/notifications/{notification}/read` | Chi owner notification; tra resource trong `data` |
+
+Notification outbox chi phat `notification_id`, `user_id`, `type`; body chat va du lieu tai chinh khong duoc dua vao event realtime.
 
 ## Client integration checklist
 

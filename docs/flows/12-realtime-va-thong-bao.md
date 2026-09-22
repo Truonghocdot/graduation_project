@@ -1,5 +1,7 @@
 # Flow 12 - Realtime, vị trí và thông báo
 
+> Implementation status: `COMPLETED` in Phase 8. Personal notification rooms, authenticated identity and HTTPS fallback are implemented.
+
 ## Mục tiêu
 
 Đồng bộ trạng thái/ETA/vị trí giữa khách và tài xế với độ trễ thấp, nhưng vẫn giữ API và database là nguồn dữ liệu chuẩn.
@@ -19,12 +21,14 @@
 
 1. Client mở socket bằng access token ngắn hạn/đang hiệu lực.
 2. Realtime service xác minh token và trạng thái user.
-3. Client tự động vào room cá nhân `user:{user_id}`.
-4. Room `booking:{booking_id}` chỉ được join khi user là customer, assigned driver hoặc admin có quyền.
+3. Server tự động đưa socket vào room cá nhân `user:{public_user_id}` sau khi worker xác thực `/me`.
+4. Room `service-request:{service_request_public_id}` chỉ được join khi user là customer hoặc assigned driver được worker xác nhận.
 5. Khi assignment đóng, token bị thu hồi hoặc quyền thay đổi, server phải remove socket khỏi room.
 6. Không nhận `user_id`, `driver_id` hoặc room id do client tự khai mà chưa kiểm tra quyền.
 
 Chat chỉ mở cho hai bên của assignment liên quan. Gọi điện dùng số điện thoại trực tiếp trong giai đoạn hiện tại; hệ thống chưa tích hợp nhà cung cấp gọi hoặc số ảo.
+
+Thông báo in-app được lưu trong `notifications`; Socket.IO phát `notification:event` vào đúng `user:{public_user_id}`. Payload chỉ gồm id/type công khai, không gồm body chat, số tiền hoặc dữ liệu ledger. Khi socket/push lỗi, app đọc lại `/notifications` và `/notifications/unread` qua HTTPS.
 
 ## Luồng A - Phát trạng thái
 
@@ -85,6 +89,8 @@ Payload gửi client chỉ chứa dữ liệu cần hiển thị. Event nội b�
 - `DELIVERY_PICKED_UP`, `DELIVERY_DELIVERED`, `DELIVERY_COMPLETED`
 - `RIDE_STARTED`, `RIDE_COMPLETED`
 - `BOOKING_CANCELLED`, `PAYMENT_STATUS_CHANGED`
+- `CHAT_MESSAGE_CREATED`, `NOTIFICATION_CREATED`, `SUPPORT_TICKET_CREATED`, `SUPPORT_TICKET_RESOLVED`
+- `INCIDENT_REPORTED`, `SAFETY_INCIDENT_REPORTED`, `INCIDENT_RESOLVED`, `LOW_RATING_FLAGGED`
 
 Tên public event có thể thêm namespace/version (`delivery.picked_up.v1`) khi chốt contract.
 

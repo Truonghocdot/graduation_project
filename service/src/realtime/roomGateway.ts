@@ -2,10 +2,6 @@ import { Server, Socket } from 'socket.io';
 
 import { WorkerEventEnvelope } from '../contracts/event.js';
 
-interface SocketAuth {
-  userId?: number;
-}
-
 export class RoomGateway {
   private readonly versions = new Map<string, number>();
   private readonly seenEventIds = new Set<string>();
@@ -19,7 +15,6 @@ export class RoomGateway {
   ) {}
 
   public authorize(socket: Socket): boolean {
-    const auth = socket.handshake.auth as SocketAuth | undefined;
     const token = socket.handshake.auth?.token;
 
     if (typeof token !== 'string' || token.length < 8) {
@@ -27,11 +22,16 @@ export class RoomGateway {
     }
 
     socket.data.token = token;
-    socket.data.userId = auth?.userId;
     return true;
   }
 
   public registerHandlers(socket: Socket): void {
+    const userId = socket.data.userId;
+
+    if (typeof userId === 'string') {
+      void socket.join('user:' + userId);
+    }
+
     socket.on('booking:join', async (
       serviceRequestId: string,
       acknowledge?: (value: unknown) => void,
@@ -57,9 +57,10 @@ export class RoomGateway {
       return;
     }
 
-    const requestId = this.requestId(event);
+    const requestId = this.stringPayload(event, 'service_request_id');
+    const userId = this.stringPayload(event, 'user_id');
 
-    if (!requestId) {
+    if (!requestId && !userId) {
       return;
     }
 
@@ -77,17 +78,25 @@ export class RoomGateway {
       this.versions.set(key, version);
     }
 
-    this.io.to('service-request:' + requestId).emit('booking:event', {
+    const payload = {
       event_id: event.event_id,
       event_type: event.event_type,
       aggregate_version: event.aggregate_version,
       payload: event.payload,
       occurred_at: event.occurred_at,
-    });
+    };
+
+    if (requestId) {
+      this.io.to('service-request:' + requestId).emit('booking:event', payload);
+    }
+
+    if (userId) {
+      this.io.to('user:' + userId).emit('notification:event', payload);
+    }
   }
 
-  private requestId(event: WorkerEventEnvelope): string | null {
-    const value = event.payload.service_request_id;
+  private stringPayload(event: WorkerEventEnvelope, key: string): string | null {
+    const value = event.payload[key];
 
     return typeof value === 'string' ? value : null;
   }

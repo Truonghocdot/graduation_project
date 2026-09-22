@@ -56,6 +56,7 @@ test('allows only authorized service request rooms', async () => {
   );
 
   assert.equal(gateway.authorize(socket), true);
+  socket.data.userId = 'trusted-user-id';
   gateway.registerHandlers(socket);
 
   let allowed: unknown;
@@ -70,7 +71,39 @@ test('allows only authorized service request rooms', async () => {
 
   assert.deepEqual(allowed, { ok: true });
   assert.deepEqual(denied, { ok: false });
-  assert.deepEqual(joined, ['service-request:request-1']);
+  assert.deepEqual(joined, ['user:trusted-user-id', 'service-request:request-1']);
+});
+
+test('publishes notification events only to the addressed user room', () => {
+  const emitted: Array<{ room: string; event: string; payload: unknown }> = [];
+  const io = {
+    to(room: string) {
+      return {
+        emit(event: string, payload: unknown) {
+          emitted.push({ room, event, payload });
+        },
+      };
+    },
+  } as unknown as Server;
+  const gateway = new RoomGateway(io, async () => true);
+
+  gateway.publish({
+    event_id: 'notification-1',
+    event_type: 'NOTIFICATION_CREATED',
+    aggregate_type: 'NOTIFICATION',
+    aggregate_id: 0,
+    aggregate_version: null,
+    payload: {
+      notification_id: 'notification-public-id',
+      user_id: 'user-public-id',
+      type: 'CHAT_MESSAGE_RECEIVED',
+    },
+    occurred_at: '2026-09-22T00:00:00Z',
+  });
+
+  assert.equal(emitted.length, 1);
+  assert.equal(emitted[0]?.room, 'user:user-public-id');
+  assert.equal(emitted[0]?.event, 'notification:event');
 });
 
 function event(eventId: string, version: number): WorkerEventEnvelope {

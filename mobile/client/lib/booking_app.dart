@@ -135,6 +135,13 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       appBar: AppBar(
         title: Text(_session.token.isEmpty ? 'Đăng nhập' : 'Đặt dịch vụ'),
         actions: [
+          if (_session.token.isNotEmpty &&
+              widget.gateway is BookingSupportGateway)
+            IconButton(
+              tooltip: 'Thong bao',
+              onPressed: _busy ? null : _showNotifications,
+              icon: const Icon(Icons.notifications_outlined),
+            ),
           if (_session.token.isNotEmpty)
             IconButton(
               tooltip: 'Ví lạnh',
@@ -633,6 +640,38 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               ),
             ],
             const SizedBox(height: 16),
+            if (widget.gateway is BookingSupportGateway) ...[
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _showChat(request),
+                    icon: const Icon(Icons.chat_bubble_outline),
+                    label: const Text('Chat'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _openSupport(request),
+                    icon: const Icon(Icons.support_agent),
+                    label: const Text('Ho tro'),
+                  ),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : () => _reportIncident(request),
+                    icon: const Icon(Icons.sos_outlined),
+                    label: const Text('SOS'),
+                  ),
+                  if (request.status == 'DELIVERED' ||
+                      request.status == 'TRIP_ENDED' ||
+                      request.status == 'COMPLETED')
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : () => _rate(request),
+                      icon: const Icon(Icons.star_outline),
+                      label: const Text('Danh gia'),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+            ],
             OutlinedButton.icon(
               onPressed: _busy || request.status == 'CANCELLED'
                   ? null
@@ -836,6 +875,268 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       setState(() => _serviceRequest = cancelled);
       _snapshotTimer?.cancel();
     });
+  }
+
+  Future<void> _showChat(ServiceRequestSummary request) async {
+    final support = widget.gateway as BookingSupportGateway;
+    final input = TextEditingController();
+    try {
+      final messages = await support.loadChat(_session, request.id);
+      if (!mounted) return;
+      final send = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Chat chuyen di'),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 240),
+                  child: messages.isEmpty
+                      ? const Text('Chua co tin nhan.')
+                      : ListView.builder(
+                          shrinkWrap: true,
+                          itemCount: messages.length,
+                          itemBuilder: (_, index) => ListTile(
+                            dense: true,
+                            title: Text(messages[index].senderName),
+                            subtitle: Text(messages[index].body),
+                          ),
+                        ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: input,
+                  maxLength: 2000,
+                  decoration: const InputDecoration(labelText: 'Tin nhan'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Dong'),
+            ),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.send),
+              label: const Text('Gui'),
+            ),
+          ],
+        ),
+      );
+      if (send == true && input.text.trim().isNotEmpty) {
+        await _run(
+          () => support.sendChat(
+            session: _session,
+            serviceRequestId: request.id,
+            body: input.text.trim(),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      input.dispose();
+    }
+  }
+
+  Future<void> _openSupport(ServiceRequestSummary request) async {
+    final support = widget.gateway as BookingSupportGateway;
+    final subject = TextEditingController();
+    final description = TextEditingController();
+    final submit = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tao yeu cau ho tro'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: subject,
+              maxLength: 191,
+              decoration: const InputDecoration(labelText: 'Tieu de'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: description,
+              maxLength: 5000,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Mo ta'),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Gui'),
+          ),
+        ],
+      ),
+    );
+    if (submit == true &&
+        subject.text.trim().isNotEmpty &&
+        description.text.trim().isNotEmpty) {
+      await _run(
+        () => support.createSupportTicket(
+          session: _session,
+          serviceRequestId: request.id,
+          subject: subject.text.trim(),
+          description: description.text.trim(),
+        ),
+      );
+    }
+    subject.dispose();
+    description.dispose();
+  }
+
+  Future<void> _reportIncident(ServiceRequestSummary request) async {
+    final support = widget.gateway as BookingSupportGateway;
+    final description = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Bao dong SOS?'),
+        content: TextField(
+          controller: description,
+          maxLength: 5000,
+          maxLines: 3,
+          decoration: const InputDecoration(labelText: 'Mo ta su co'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Huy'),
+          ),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.sos_outlined),
+            label: const Text('Bao ngay'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await _run(
+        () => support.reportIncident(
+          session: _session,
+          serviceRequestId: request.id,
+          incidentType: 'SOS',
+          description: description.text,
+        ),
+      );
+    }
+    description.dispose();
+  }
+
+  Future<void> _rate(ServiceRequestSummary request) async {
+    final support = widget.gateway as BookingSupportGateway;
+    final comment = TextEditingController();
+    var score = 5;
+    final submit = await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Danh gia tai xe'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              DropdownButtonFormField<int>(
+                initialValue: score,
+                decoration: const InputDecoration(labelText: 'So sao'),
+                items: [1, 2, 3, 4, 5]
+                    .map(
+                      (value) => DropdownMenuItem(
+                        value: value,
+                        child: Text('$value sao'),
+                      ),
+                    )
+                    .toList(growable: false),
+                onChanged: (value) => setDialogState(() => score = value ?? 5),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: comment,
+                maxLength: 1000,
+                decoration: const InputDecoration(labelText: 'Nhan xet'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Huy'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Gui'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (submit == true) {
+      await _run(
+        () => support.submitRating(
+          session: _session,
+          serviceRequestId: request.id,
+          score: score,
+          comment: comment.text,
+        ),
+      );
+    }
+    comment.dispose();
+  }
+
+  Future<void> _showNotifications() async {
+    final support = widget.gateway as BookingSupportGateway;
+    try {
+      final notifications = await support.loadNotifications(_session);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        builder: (context) => ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Text('Thong bao', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            if (notifications.isEmpty)
+              const ListTile(title: Text('Chua co thong bao.')),
+            for (final notification in notifications)
+              ListTile(
+                leading: Icon(
+                  notification.isRead
+                      ? Icons.notifications_none
+                      : Icons.notifications_active_outlined,
+                ),
+                title: Text(notification.type),
+                trailing: notification.isRead
+                    ? null
+                    : IconButton(
+                        tooltip: 'Danh dau da doc',
+                        onPressed: () async {
+                          await support.markNotificationRead(
+                            _session,
+                            notification.id,
+                          );
+                          if (context.mounted) Navigator.pop(context);
+                        },
+                        icon: const Icon(Icons.done),
+                      ),
+              ),
+          ],
+        ),
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    }
   }
 
   bool _validate() {

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\SystemSettings;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\SystemSettings\Pages\CreateSystemSetting;
 use App\Filament\Resources\SystemSettings\Pages\EditSystemSetting;
 use App\Filament\Resources\SystemSettings\Pages\ListSystemSettings;
@@ -20,6 +21,8 @@ use UnitEnum;
 
 class SystemSettingResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = SystemSetting::class;
 
     protected static ?string $recordTitleAttribute = 'key';

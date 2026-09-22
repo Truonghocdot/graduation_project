@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\DriverProfiles;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\DriverProfiles\Pages\ListDriverProfiles;
 use App\Filament\Resources\DriverProfiles\Pages\ViewDriverProfile;
 use App\Filament\Resources\DriverProfiles\RelationManagers\BankAccountsRelationManager;
@@ -23,6 +24,8 @@ use UnitEnum;
 
 class DriverProfileResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = DriverProfile::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Driver Operations';

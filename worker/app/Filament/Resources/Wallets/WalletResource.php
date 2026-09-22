@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Wallets;
 
+use App\Filament\Concerns\RequiresAdminRole;
 use App\Filament\Resources\Wallets\Pages\ListWallets;
 use App\Filament\Resources\Wallets\Pages\ViewWallet;
 use App\Filament\Resources\Wallets\Schemas\WalletInfolist;
@@ -18,6 +19,8 @@ use UnitEnum;
 
 class WalletResource extends Resource
 {
+    use RequiresAdminRole;
+
     protected static ?string $model = Wallet::class;
 
     protected static string|UnitEnum|null $navigationGroup = 'Finance';

@@ -1,5 +1,7 @@
 # Flow 11 - Đánh giá và khiếu nại
 
+> Implementation status: `COMPLETED` in Phase 8. API, Filament moderation and customer/driver entry points are implemented.
+
 ## Mục tiêu
 
 Thu nhận phản hồi sau dịch vụ, hỗ trợ giải quyết tranh chấp và tạo audit đầy đủ cho mọi điều chỉnh tiền/trạng thái.

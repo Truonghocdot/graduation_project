@@ -132,6 +132,30 @@ class ServiceRequest extends Model
         return $this->hasMany(ServiceEvidence::class);
     }
 
+    /** @return HasMany<SupportTicket, $this> */
+    public function supportTickets(): HasMany
+    {
+        return $this->hasMany(SupportTicket::class);
+    }
+
+    /** @return HasMany<Incident, $this> */
+    public function incidents(): HasMany
+    {
+        return $this->hasMany(Incident::class);
+    }
+
+    /** @return HasMany<Rating, $this> */
+    public function ratings(): HasMany
+    {
+        return $this->hasMany(Rating::class);
+    }
+
+    /** @return HasOne<ChatConversation, $this> */
+    public function chatConversation(): HasOne
+    {
+        return $this->hasOne(ChatConversation::class);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

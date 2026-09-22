@@ -37,10 +37,15 @@ app.get('/health', (_request, response) => {
 
 io.use(async (socket, next) => {
   const token = socket.handshake.auth?.token;
-  const allowed = gateway.authorize(socket)
-    && typeof token === 'string'
-    && await authorizer.authenticate(token);
-  next(allowed ? undefined : new Error('UNAUTHORIZED_SOCKET'));
+  const userId = gateway.authorize(socket) && typeof token === 'string'
+    ? await authorizer.identity(token)
+    : null;
+
+  if (userId) {
+    socket.data.userId = userId;
+  }
+
+  next(userId ? undefined : new Error('UNAUTHORIZED_SOCKET'));
 });
 io.on('connection', (socket) => gateway.registerHandlers(socket));
 

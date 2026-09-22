@@ -84,6 +84,12 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasOne(Wallet::class);
     }
 
+    /** @return HasMany<UserNotification, $this> */
+    public function appNotifications(): HasMany
+    {
+        return $this->hasMany(UserNotification::class);
+    }
+
     public function hasRole(RoleKey $role): bool
     {
         return $this->roles()->where('key', $role->value)->exists();
@@ -92,7 +98,7 @@ class User extends Authenticatable implements FilamentUser
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->status === UserStatus::Active
-            && $this->hasRole(RoleKey::Admin)
+            && ($this->hasRole(RoleKey::Admin) || $this->hasRole(RoleKey::Support))
             && $panel->getId() === 'admin';
     }
 

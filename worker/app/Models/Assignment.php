@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Str;
 
 /**
@@ -72,6 +73,12 @@ class Assignment extends Model
     public function acceptedOffer(): BelongsTo
     {
         return $this->belongsTo(DriverOffer::class, 'accepted_offer_id');
+    }
+
+    /** @return HasOne<ChatConversation, $this> */
+    public function chatConversation(): HasOne
+    {
+        return $this->hasOne(ChatConversation::class);
     }
 
     /** @return array<string, string> */
