@@ -1,4 +1,9 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
 import 'api_transport.dart';
+import 'request_id.dart';
 
 enum ServiceKind {
   delivery('DELIVERY'),
@@ -276,6 +281,61 @@ class AppNotificationSummary {
   }
 }
 
+class SupportTicketSummary {
+  const SupportTicketSummary({
+    required this.id,
+    required this.subject,
+    required this.status,
+    required this.messages,
+  });
+
+  final String id;
+  final String subject;
+  final String status;
+  final List<SupportChatMessage> messages;
+
+  factory SupportTicketSummary.fromJson(Map<String, dynamic> json) {
+    return SupportTicketSummary(
+      id: json['id'] as String,
+      subject: json['subject'] as String,
+      status: json['status'] as String,
+      messages: (json['messages'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .map(SupportChatMessage.fromJson)
+          .toList(growable: false),
+    );
+  }
+}
+
+abstract interface class CustomerAccountGateway {
+  Future<void> register({
+    required String baseUrl,
+    required String name,
+    required String phone,
+    required String password,
+  });
+  Future<String> verifyPhone({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  });
+  Future<void> resendPhone({required String baseUrl, required String phone});
+  Future<void> forgotPassword({required String baseUrl, required String phone});
+  Future<String> verifyReset({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  });
+  Future<void> resetPassword({
+    required String baseUrl,
+    required String phone,
+    required String resetToken,
+    required String password,
+  });
+  Future<void> validateSession(BookingSession session);
+  Future<void> logout(BookingSession session);
+}
+
 abstract interface class BookingSupportGateway {
   Future<List<SupportChatMessage>> loadChat(
     BookingSession session,
@@ -317,6 +377,14 @@ abstract interface class BookingSupportGateway {
     BookingSession session,
     String notificationId,
   );
+
+  Future<List<SupportTicketSummary>> loadTickets(BookingSession session);
+  Future<SupportTicketSummary> loadTicket(BookingSession session, String id);
+  Future<void> replyToTicket({
+    required BookingSession session,
+    required String id,
+    required String body,
+  });
 }
 
 abstract interface class BookingGateway {
@@ -360,11 +428,171 @@ abstract interface class BookingGateway {
   });
 }
 
-class BookingApi implements BookingGateway, BookingSupportGateway {
-  BookingApi({ApiTransport? transport})
+class BookingApi
+    implements BookingGateway, BookingSupportGateway, CustomerAccountGateway {
+  BookingApi({ApiTransport? transport, this.deviceId = 'customer-app-session'})
     : _transport = transport ?? createApiTransport();
 
   final ApiTransport _transport;
+  final String deviceId;
+  final _pendingOperations = <String, String>{};
+
+  Future<void> _sendRetryable({
+    required BookingSession session,
+    required String path,
+    required Map<String, dynamic> body,
+    bool chat = false,
+  }) async {
+    final key = '${session.token}:$path:${jsonEncode(body)}';
+    final id = _pendingOperations.putIfAbsent(key, newRequestId);
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, path),
+      token: session.token,
+      headers: chat ? const {} : {'Idempotency-Key': id},
+      body: chat ? {'client_message_id': id, ...body} : body,
+    );
+    _data(response);
+    _pendingOperations.remove(key);
+  }
+
+  Uri _authUri(String baseUrl, String path) =>
+      Uri.parse('${baseUrl.replaceFirst(RegExp(r'/$'), '')}$path');
+
+  Future<ApiResponse> _authPost(
+    String baseUrl,
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _authUri(baseUrl, path),
+      token: '',
+      body: body,
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw BookingApiException.fromResponse(response);
+    }
+    return response;
+  }
+
+  Map<String, dynamic> _deviceContext() => {
+    'device_id': deviceId,
+    'app_type': 'CUSTOMER_APP',
+    'platform': kIsWeb
+        ? 'WEB'
+        : defaultTargetPlatform == TargetPlatform.iOS
+        ? 'IOS'
+        : 'ANDROID',
+  };
+
+  @override
+  Future<void> register({
+    required String baseUrl,
+    required String name,
+    required String phone,
+    required String password,
+  }) async {
+    await _authPost(baseUrl, '/auth/register', {
+      'name': name,
+      'phone': phone,
+      'password': password,
+      'password_confirmation': password,
+    });
+  }
+
+  @override
+  Future<String> verifyPhone({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  }) async {
+    final response = await _authPost(baseUrl, '/auth/phone/verify', {
+      'phone': phone,
+      'code': code,
+      ..._deviceContext(),
+    });
+    return _token(response);
+  }
+
+  @override
+  Future<void> resendPhone({
+    required String baseUrl,
+    required String phone,
+  }) async {
+    await _authPost(baseUrl, '/auth/phone/resend', {'phone': phone});
+  }
+
+  @override
+  Future<void> forgotPassword({
+    required String baseUrl,
+    required String phone,
+  }) async {
+    await _authPost(baseUrl, '/auth/password/forgot', {'phone': phone});
+  }
+
+  @override
+  Future<String> verifyReset({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  }) async {
+    final response = await _authPost(baseUrl, '/auth/password/verify', {
+      'phone': phone,
+      'code': code,
+    });
+    final token = response.body['reset_token'];
+    if (token is! String) {
+      throw const BookingApiException('Invalid reset token.');
+    }
+    return token;
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String baseUrl,
+    required String phone,
+    required String resetToken,
+    required String password,
+  }) async {
+    await _authPost(baseUrl, '/auth/password/reset', {
+      'phone': phone,
+      'token': resetToken,
+      'password': password,
+      'password_confirmation': password,
+    });
+  }
+
+  @override
+  Future<void> validateSession(BookingSession session) async {
+    _data(
+      await _transport.send(
+        method: 'GET',
+        uri: _uri(session, '/me'),
+        token: session.token,
+      ),
+    );
+  }
+
+  @override
+  Future<void> logout(BookingSession session) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, '/auth/logout'),
+      token: session.token,
+    );
+    if (response.statusCode != 204) {
+      throw BookingApiException.fromResponse(response);
+    }
+  }
+
+  String _token(ApiResponse response) {
+    final token = response.body['token'];
+    if (token is! String || token.isEmpty) {
+      throw const BookingApiException('Phiên đăng nhập không hợp lệ.');
+    }
+    return token;
+  }
 
   @override
   Future<String> login({
@@ -376,24 +604,13 @@ class BookingApi implements BookingGateway, BookingSupportGateway {
       method: 'POST',
       uri: Uri.parse('${baseUrl.replaceFirst(RegExp(r'/$'), '')}/auth/login'),
       token: '',
-      body: {
-        'phone': phone,
-        'password': password,
-        'device_id': 'customer-app-session',
-        'app_type': 'CUSTOMER_APP',
-        'platform': 'ANDROID',
-      },
+      body: {'phone': phone, 'password': password, ..._deviceContext()},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw BookingApiException.fromResponse(response);
     }
 
-    final token = response.body['token'];
-    if (token is! String || token.isEmpty) {
-      throw const BookingApiException('Phiên đăng nhập không hợp lệ.');
-    }
-
-    return token;
+    return _token(response);
   }
 
   @override
@@ -554,13 +771,11 @@ class BookingApi implements BookingGateway, BookingSupportGateway {
     required String serviceRequestId,
     required String body,
   }) async {
-    _data(
-      await _transport.send(
-        method: 'POST',
-        uri: _uri(session, '/service-requests/$serviceRequestId/chat'),
-        token: session.token,
-        body: {'client_message_id': _uuid(), 'body': body},
-      ),
+    await _sendRetryable(
+      session: session,
+      path: '/service-requests/$serviceRequestId/chat',
+      body: {'body': body},
+      chat: true,
     );
   }
 
@@ -571,19 +786,15 @@ class BookingApi implements BookingGateway, BookingSupportGateway {
     required String subject,
     required String description,
   }) async {
-    _data(
-      await _transport.send(
-        method: 'POST',
-        uri: _uri(session, '/support/tickets'),
-        token: session.token,
-        headers: {'Idempotency-Key': _uuid()},
-        body: {
-          'service_request_id': serviceRequestId,
-          'category': 'OTHER',
-          'subject': subject,
-          'description': description,
-        },
-      ),
+    await _sendRetryable(
+      session: session,
+      path: '/support/tickets',
+      body: {
+        'service_request_id': serviceRequestId,
+        'category': 'OTHER',
+        'subject': subject,
+        'description': description,
+      },
     );
   }
 
@@ -594,18 +805,14 @@ class BookingApi implements BookingGateway, BookingSupportGateway {
     required String incidentType,
     String? description,
   }) async {
-    _data(
-      await _transport.send(
-        method: 'POST',
-        uri: _uri(session, '/service-requests/$serviceRequestId/incidents'),
-        token: session.token,
-        headers: {'Idempotency-Key': _uuid()},
-        body: {
-          'incident_type': incidentType,
-          if (description?.trim().isNotEmpty ?? false)
-            'description': description!.trim(),
-        },
-      ),
+    await _sendRetryable(
+      session: session,
+      path: '/service-requests/$serviceRequestId/incidents',
+      body: {
+        'incident_type': incidentType,
+        if (description?.trim().isNotEmpty ?? false)
+          'description': description!.trim(),
+      },
     );
   }
 
@@ -658,6 +865,47 @@ class BookingApi implements BookingGateway, BookingSupportGateway {
     );
   }
 
+  @override
+  Future<List<SupportTicketSummary>> loadTickets(BookingSession session) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/support/tickets'),
+      token: session.token,
+    );
+    return _listData(response)
+        .map(SupportTicketSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<SupportTicketSummary> loadTicket(
+    BookingSession session,
+    String id,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/support/tickets/$id'),
+      token: session.token,
+    );
+    return SupportTicketSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<void> replyToTicket({
+    required BookingSession session,
+    required String id,
+    required String body,
+  }) async {
+    _data(
+      await _transport.send(
+        method: 'POST',
+        uri: _uri(session, '/support/tickets/$id/messages'),
+        token: session.token,
+        body: {'body': body},
+      ),
+    );
+  }
+
   Uri _uri(BookingSession session, String path) {
     return Uri.parse('${session.baseUrl.replaceFirst(RegExp(r'/$'), '')}$path');
   }
@@ -687,25 +935,23 @@ class BookingApi implements BookingGateway, BookingSupportGateway {
 
     return data.whereType<Map<String, dynamic>>().toList(growable: false);
   }
-
-  String _uuid() {
-    final value = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
-    final padded = value.padLeft(32, '0');
-    return '${padded.substring(0, 8)}-${padded.substring(8, 12)}-4${padded.substring(13, 16)}-a${padded.substring(17, 20)}-${padded.substring(20, 32)}';
-  }
 }
 
 class BookingApiException implements Exception {
-  const BookingApiException(this.message);
+  const BookingApiException(this.message, {this.statusCode});
 
   final String message;
+  final int? statusCode;
 
   factory BookingApiException.fromResponse(ApiResponse response) {
     final errors = response.body['errors'];
     if (errors is Map<String, dynamic>) {
       for (final value in errors.values) {
         if (value is List && value.isNotEmpty) {
-          return BookingApiException(value.first.toString());
+          return BookingApiException(
+            value.first.toString(),
+            statusCode: response.statusCode,
+          );
         }
       }
     }
@@ -713,6 +959,7 @@ class BookingApiException implements Exception {
     return BookingApiException(
       response.body['message']?.toString() ??
           'Không thể hoàn tất yêu cầu (${response.statusCode}).',
+      statusCode: response.statusCode,
     );
   }
 

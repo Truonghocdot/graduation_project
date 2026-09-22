@@ -1,14 +1,156 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
 import 'api_transport.dart';
+import 'request_id.dart';
 
 class DriverSession {
-  const DriverSession({required this.baseUrl, required this.token});
+  const DriverSession({
+    required this.baseUrl,
+    required this.token,
+    this.onboarding = false,
+  });
 
   final String baseUrl;
   final String token;
+  final bool onboarding;
 
-  DriverSession copyWith({String? token}) {
-    return DriverSession(baseUrl: baseUrl, token: token ?? this.token);
+  DriverSession copyWith({String? token, bool? onboarding}) {
+    return DriverSession(
+      baseUrl: baseUrl,
+      token: token ?? this.token,
+      onboarding: onboarding ?? this.onboarding,
+    );
   }
+}
+
+class DriverLoginResult {
+  const DriverLoginResult(this.token, {required this.onboarding});
+  final String token;
+  final bool onboarding;
+}
+
+class DriverProfileSummary {
+  const DriverProfileSummary({
+    required this.reviewStatus,
+    required this.availabilityStatus,
+    required this.vehicles,
+    required this.documents,
+    required this.capabilities,
+    this.reviewReason,
+  });
+  final String reviewStatus;
+  final String availabilityStatus;
+  final String? reviewReason;
+  final List<Map<String, dynamic>> vehicles;
+  final List<Map<String, dynamic>> documents;
+  final List<String> capabilities;
+
+  factory DriverProfileSummary.fromJson(Map<String, dynamic> json) =>
+      DriverProfileSummary(
+        reviewStatus: json['review_status'] as String,
+        availabilityStatus: json['availability_status'] as String,
+        reviewReason: json['review_reason_code'] as String?,
+        vehicles: (json['vehicles'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false),
+        documents: (json['documents'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .toList(growable: false),
+        capabilities: (json['capabilities'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .where((item) => item['is_active'] == true)
+            .map((item) => item['service_type'].toString())
+            .toList(growable: false),
+      );
+}
+
+abstract interface class DriverOperationsGateway {
+  Future<DriverLoginResult> authenticate({
+    required String baseUrl,
+    required String phone,
+    required String password,
+  });
+  Future<void> register({
+    required String baseUrl,
+    required String name,
+    required String phone,
+    required String password,
+  });
+  Future<String> verifyPhone({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  });
+  Future<void> resendPhone({required String baseUrl, required String phone});
+  Future<void> forgotPassword({required String baseUrl, required String phone});
+  Future<String> verifyReset({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  });
+  Future<void> resetPassword({
+    required String baseUrl,
+    required String phone,
+    required String resetToken,
+    required String password,
+  });
+  Future<void> validateSession(DriverSession session);
+  Future<void> logout(DriverSession session);
+  Future<DriverProfileSummary?> loadApplication(DriverSession session);
+  Future<DriverProfileSummary> saveApplication(
+    DriverSession session,
+    double codLimit,
+  );
+  Future<List<Map<String, dynamic>>> loadVehicleTypes(DriverSession session);
+  Future<void> createVehicle({
+    required DriverSession session,
+    required String vehicleTypeId,
+    required String plateNumber,
+  });
+  Future<void> uploadDocument({
+    required DriverSession session,
+    required String documentType,
+    required String name,
+    required Uint8List bytes,
+    String? documentNumber,
+    String? vehicleId,
+  });
+  Future<void> submitApplication({
+    required DriverSession session,
+    required String vehicleId,
+    required List<String> serviceTypes,
+  });
+  Future<DriverProfileSummary> setAvailability({
+    required DriverSession session,
+    required bool online,
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+    required List<String> serviceTypes,
+  });
+  Future<void> updateLocation({
+    required DriverSession session,
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+  });
+  Future<String> uploadEvidence({
+    required DriverSession session,
+    required String serviceRequestId,
+    required String evidenceType,
+    required String name,
+    required Uint8List bytes,
+    required double latitude,
+    required double longitude,
+  });
+  Future<void> createBankAccount({
+    required DriverSession session,
+    required String bankCode,
+    required String accountNumber,
+    required String accountName,
+  });
 }
 
 class DriverOfferSummary {
@@ -174,7 +316,38 @@ class DriverNotificationSummary {
   }
 }
 
+class DriverTicketSummary {
+  const DriverTicketSummary({
+    required this.id,
+    required this.subject,
+    required this.status,
+    required this.messages,
+  });
+  final String id;
+  final String subject;
+  final String status;
+  final List<DriverChatMessage> messages;
+
+  factory DriverTicketSummary.fromJson(Map<String, dynamic> json) =>
+      DriverTicketSummary(
+        id: json['id'] as String,
+        subject: json['subject'] as String,
+        status: json['status'] as String,
+        messages: (json['messages'] as List? ?? const [])
+            .whereType<Map<String, dynamic>>()
+            .map(DriverChatMessage.fromJson)
+            .toList(growable: false),
+      );
+}
+
 abstract interface class DriverSupportGateway {
+  Future<List<DriverTicketSummary>> loadTickets(DriverSession session);
+  Future<DriverTicketSummary> loadTicket(DriverSession session, String id);
+  Future<void> replyToTicket({
+    required DriverSession session,
+    required String id,
+    required String body,
+  });
   Future<List<DriverChatMessage>> loadChat(
     DriverSession session,
     String serviceRequestId,
@@ -242,6 +415,8 @@ abstract interface class DriverGateway {
     required String idempotencyKey,
     double? cashCollected,
     double? codCollected,
+    String? evidenceId,
+    String? outOfGeofenceReason,
   });
 
   Future<DriverWalletSummary> loadWallet(DriverSession session);
@@ -258,11 +433,232 @@ abstract interface class DriverGateway {
   });
 }
 
-class DriverApi implements DriverGateway, DriverSupportGateway {
-  DriverApi({ApiTransport? transport})
+class DriverApi
+    implements DriverGateway, DriverSupportGateway, DriverOperationsGateway {
+  DriverApi({ApiTransport? transport, this.deviceId = 'driver-app-session'})
     : _transport = transport ?? createApiTransport();
 
   final ApiTransport _transport;
+  final String deviceId;
+  final _pendingOperations = <String, String>{};
+
+  Future<void> _sendRetryable({
+    required DriverSession session,
+    required String path,
+    required Map<String, dynamic> body,
+    bool chat = false,
+  }) async {
+    final key = '${session.token}:$path:${jsonEncode(body)}';
+    final id = _pendingOperations.putIfAbsent(key, newRequestId);
+    final response = await _transport.send(
+      method: 'POST',
+      uri: _uri(session, path),
+      token: session.token,
+      headers: chat ? const {} : {'Idempotency-Key': id},
+      body: chat ? {'client_message_id': id, ...body} : body,
+    );
+    _assertSuccess(response);
+    _pendingOperations.remove(key);
+  }
+
+  String get _platform => kIsWeb
+      ? 'WEB'
+      : defaultTargetPlatform == TargetPlatform.iOS
+      ? 'IOS'
+      : 'ANDROID';
+
+  Future<ApiResponse> _postAuth(
+    String baseUrl,
+    String path,
+    Map<String, dynamic> body,
+  ) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: Uri.parse('${_base(baseUrl)}$path'),
+      token: '',
+      body: body,
+    );
+    _assertSuccess(response);
+    return response;
+  }
+
+  Future<String> _loginAs(
+    String baseUrl,
+    String phone,
+    String password,
+    String appType,
+  ) async {
+    final response = await _postAuth(baseUrl, '/auth/login', {
+      'phone': phone,
+      'password': password,
+      'device_id': deviceId,
+      'app_type': appType,
+      'platform': _platform,
+    });
+    final token = response.body['token'];
+    if (token is! String || token.isEmpty) {
+      throw const DriverApiException('Phiên đăng nhập không hợp lệ.');
+    }
+    return token;
+  }
+
+  @override
+  Future<DriverLoginResult> authenticate({
+    required String baseUrl,
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      return DriverLoginResult(
+        await _loginAs(baseUrl, phone, password, 'DRIVER_APP'),
+        onboarding: false,
+      );
+    } on DriverApiException catch (error) {
+      if (error.statusCode != 422) rethrow;
+      return DriverLoginResult(
+        await _loginAs(baseUrl, phone, password, 'CUSTOMER_APP'),
+        onboarding: true,
+      );
+    }
+  }
+
+  @override
+  Future<void> register({
+    required String baseUrl,
+    required String name,
+    required String phone,
+    required String password,
+  }) async {
+    await _postAuth(baseUrl, '/auth/register', {
+      'name': name,
+      'phone': phone,
+      'password': password,
+      'password_confirmation': password,
+    });
+  }
+
+  @override
+  Future<String> verifyPhone({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  }) async {
+    final response = await _postAuth(baseUrl, '/auth/phone/verify', {
+      'phone': phone,
+      'code': code,
+      'device_id': deviceId,
+      'app_type': 'CUSTOMER_APP',
+      'platform': _platform,
+    });
+    final token = response.body['token'];
+    if (token is! String || token.isEmpty) {
+      throw const DriverApiException('Phiên đăng nhập không hợp lệ.');
+    }
+    return token;
+  }
+
+  @override
+  Future<void> resendPhone({
+    required String baseUrl,
+    required String phone,
+  }) async {
+    await _postAuth(baseUrl, '/auth/phone/resend', {'phone': phone});
+  }
+
+  @override
+  Future<void> forgotPassword({
+    required String baseUrl,
+    required String phone,
+  }) async {
+    await _postAuth(baseUrl, '/auth/password/forgot', {'phone': phone});
+  }
+
+  @override
+  Future<String> verifyReset({
+    required String baseUrl,
+    required String phone,
+    required String code,
+  }) async {
+    final response = await _postAuth(baseUrl, '/auth/password/verify', {
+      'phone': phone,
+      'code': code,
+    });
+    final token = response.body['reset_token'];
+    if (token is! String) {
+      throw const DriverApiException('Mã đặt lại mật khẩu không hợp lệ.');
+    }
+    return token;
+  }
+
+  @override
+  Future<void> resetPassword({
+    required String baseUrl,
+    required String phone,
+    required String resetToken,
+    required String password,
+  }) async {
+    await _postAuth(baseUrl, '/auth/password/reset', {
+      'phone': phone,
+      'token': resetToken,
+      'password': password,
+      'password_confirmation': password,
+    });
+  }
+
+  @override
+  Future<void> validateSession(DriverSession session) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: Uri.parse('${_base(session.baseUrl)}/me'),
+      token: session.token,
+    );
+    _assertSuccess(response);
+  }
+
+  @override
+  Future<List<DriverTicketSummary>> loadTickets(DriverSession session) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/support/tickets'),
+      token: session.token,
+    );
+    _assertSuccess(response);
+    return _listData(response)
+        .map(DriverTicketSummary.fromJson)
+        .toList(growable: false);
+  }
+
+  @override
+  Future<DriverTicketSummary> loadTicket(
+    DriverSession session,
+    String id,
+  ) async => DriverTicketSummary.fromJson(
+    await _resource(session, 'GET', '/support/tickets/$id'),
+  );
+
+  @override
+  Future<void> replyToTicket({
+    required DriverSession session,
+    required String id,
+    required String body,
+  }) async {
+    await _resource(
+      session,
+      'POST',
+      '/support/tickets/$id/messages',
+      body: {'body': body},
+    );
+  }
+
+  @override
+  Future<void> logout(DriverSession session) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: Uri.parse('${_base(session.baseUrl)}/auth/logout'),
+      token: session.token,
+    );
+    _assertSuccess(response);
+  }
 
   @override
   Future<String> login({
@@ -270,24 +666,227 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     required String phone,
     required String password,
   }) async {
+    return _loginAs(baseUrl, phone, password, 'DRIVER_APP');
+  }
+
+  Uri _uri(DriverSession session, String path) =>
+      Uri.parse('${_base(session.baseUrl)}$path');
+
+  Future<Map<String, dynamic>> _resource(
+    DriverSession session,
+    String method,
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     final response = await _transport.send(
-      method: 'POST',
-      uri: Uri.parse('${_base(baseUrl)}/auth/login'),
-      token: '',
-      body: {
-        'phone': phone,
-        'password': password,
-        'device_id': 'driver-app-session',
-        'app_type': 'DRIVER_APP',
-        'platform': 'ANDROID',
-      },
+      method: method,
+      uri: _uri(session, path),
+      token: session.token,
+      body: body,
     );
     _assertSuccess(response);
-    final token = response.body['token'];
-    if (token is! String || token.isEmpty) {
-      throw const DriverApiException('Phiên đăng nhập không hợp lệ.');
+    final data = response.body['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const DriverApiException('Phản hồi máy chủ không hợp lệ.');
     }
-    return token;
+    return data;
+  }
+
+  @override
+  Future<DriverProfileSummary?> loadApplication(DriverSession session) async {
+    try {
+      return DriverProfileSummary.fromJson(
+        await _resource(session, 'GET', '/driver/application'),
+      );
+    } on DriverApiException catch (error) {
+      if (error.statusCode == 422) return null;
+      rethrow;
+    }
+  }
+
+  @override
+  Future<DriverProfileSummary> saveApplication(
+    DriverSession session,
+    double codLimit,
+  ) async => DriverProfileSummary.fromJson(
+    await _resource(
+      session,
+      'POST',
+      '/driver/application',
+      body: {'cod_limit': codLimit},
+    ),
+  );
+
+  @override
+  Future<List<Map<String, dynamic>>> loadVehicleTypes(
+    DriverSession session,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/catalog/vehicle-types'),
+      token: session.token,
+    );
+    _assertSuccess(response);
+    return _listData(response);
+  }
+
+  @override
+  Future<void> createVehicle({
+    required DriverSession session,
+    required String vehicleTypeId,
+    required String plateNumber,
+  }) async {
+    await _resource(
+      session,
+      'POST',
+      '/driver/vehicles',
+      body: {'vehicle_type_id': vehicleTypeId, 'plate_number': plateNumber},
+    );
+  }
+
+  Future<Map<String, dynamic>> _upload(
+    DriverSession session,
+    String path,
+    String name,
+    Uint8List bytes,
+    Map<String, String> fields,
+  ) async {
+    final transport = _transport;
+    if (transport is! MultipartApiTransport) {
+      throw const DriverApiException('Thiết bị không hỗ trợ tải tệp.');
+    }
+    final response = await (transport as MultipartApiTransport).upload(
+      uri: _uri(session, path),
+      token: session.token,
+      name: name,
+      bytes: bytes,
+      fields: fields,
+    );
+    _assertSuccess(response);
+    final data = response.body['data'];
+    if (data is! Map<String, dynamic>) {
+      throw const DriverApiException('Phản hồi tải tệp không hợp lệ.');
+    }
+    return data;
+  }
+
+  @override
+  Future<void> uploadDocument({
+    required DriverSession session,
+    required String documentType,
+    required String name,
+    required Uint8List bytes,
+    String? documentNumber,
+    String? vehicleId,
+  }) async {
+    await _upload(session, '/driver/documents', name, bytes, {
+      'document_type': documentType,
+      if (documentNumber != null && documentNumber.isNotEmpty)
+        'document_number': documentNumber,
+      if (vehicleId != null && vehicleId.isNotEmpty) 'vehicle_id': vehicleId,
+    });
+  }
+
+  @override
+  Future<void> submitApplication({
+    required DriverSession session,
+    required String vehicleId,
+    required List<String> serviceTypes,
+  }) async {
+    await _resource(
+      session,
+      'POST',
+      '/driver/application/submit',
+      body: {'vehicle_id': vehicleId, 'service_types': serviceTypes},
+    );
+  }
+
+  @override
+  Future<DriverProfileSummary> setAvailability({
+    required DriverSession session,
+    required bool online,
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+    required List<String> serviceTypes,
+  }) async => DriverProfileSummary.fromJson(
+    await _resource(
+      session,
+      'PUT',
+      online ? '/driver/availability/online' : '/driver/availability/offline',
+      body: online
+          ? {
+              'service_types': serviceTypes,
+              'latitude': latitude,
+              'longitude': longitude,
+              'accuracy': accuracy,
+              'captured_at': DateTime.now().toUtc().toIso8601String(),
+            }
+          : null,
+    ),
+  );
+
+  @override
+  Future<void> updateLocation({
+    required DriverSession session,
+    required double latitude,
+    required double longitude,
+    required double accuracy,
+  }) async {
+    await _resource(
+      session,
+      'PUT',
+      '/driver/location',
+      body: {
+        'latitude': latitude,
+        'longitude': longitude,
+        'accuracy': accuracy,
+        'captured_at': DateTime.now().toUtc().toIso8601String(),
+      },
+    );
+  }
+
+  @override
+  Future<String> uploadEvidence({
+    required DriverSession session,
+    required String serviceRequestId,
+    required String evidenceType,
+    required String name,
+    required Uint8List bytes,
+    required double latitude,
+    required double longitude,
+  }) async {
+    final data = await _upload(
+      session,
+      '/driver/service-requests/$serviceRequestId/evidence',
+      name,
+      bytes,
+      {
+        'evidence_type': evidenceType,
+        'latitude': '$latitude',
+        'longitude': '$longitude',
+      },
+    );
+    return data['id'] as String;
+  }
+
+  @override
+  Future<void> createBankAccount({
+    required DriverSession session,
+    required String bankCode,
+    required String accountNumber,
+    required String accountName,
+  }) async {
+    await _resource(
+      session,
+      'POST',
+      '/driver/bank-accounts',
+      body: {
+        'bank_code': bankCode,
+        'account_number': accountNumber,
+        'account_name': accountName,
+      },
+    );
   }
 
   @override
@@ -340,6 +939,8 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     required String idempotencyKey,
     double? cashCollected,
     double? codCollected,
+    String? evidenceId,
+    String? outOfGeofenceReason,
   }) async {
     final response = await _transport.send(
       method: 'POST',
@@ -354,6 +955,8 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
         'longitude': longitude,
         'cash_collected': ?cashCollected,
         'cod_collected': ?codCollected,
+        'evidence_id': ?evidenceId,
+        'out_of_geofence_reason': ?outOfGeofenceReason,
       },
     );
     _assertSuccess(response);
@@ -431,15 +1034,12 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     required String serviceRequestId,
     required String body,
   }) async {
-    final response = await _transport.send(
-      method: 'POST',
-      uri: Uri.parse(
-        '${_base(session.baseUrl)}/service-requests/$serviceRequestId/chat',
-      ),
-      token: session.token,
-      body: {'client_message_id': _uuid(), 'body': body},
+    await _sendRetryable(
+      session: session,
+      path: '/service-requests/$serviceRequestId/chat',
+      body: {'body': body},
+      chat: true,
     );
-    _assertSuccess(response);
   }
 
   @override
@@ -449,11 +1049,9 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     required String subject,
     required String description,
   }) async {
-    final response = await _transport.send(
-      method: 'POST',
-      uri: Uri.parse('${_base(session.baseUrl)}/support/tickets'),
-      token: session.token,
-      headers: {'Idempotency-Key': _uuid()},
+    await _sendRetryable(
+      session: session,
+      path: '/support/tickets',
       body: {
         'service_request_id': serviceRequestId,
         'category': 'OTHER',
@@ -461,7 +1059,6 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
         'description': description,
       },
     );
-    _assertSuccess(response);
   }
 
   @override
@@ -471,20 +1068,15 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     required String incidentType,
     String? description,
   }) async {
-    final response = await _transport.send(
-      method: 'POST',
-      uri: Uri.parse(
-        '${_base(session.baseUrl)}/service-requests/$serviceRequestId/incidents',
-      ),
-      token: session.token,
-      headers: {'Idempotency-Key': _uuid()},
+    await _sendRetryable(
+      session: session,
+      path: '/service-requests/$serviceRequestId/incidents',
       body: {
         'incident_type': incidentType,
         if (description?.trim().isNotEmpty ?? false)
           'description': description!.trim(),
       },
     );
-    _assertSuccess(response);
   }
 
   @override
@@ -546,12 +1138,16 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     if (errors is Map<String, dynamic>) {
       for (final value in errors.values) {
         if (value is List && value.isNotEmpty) {
-          throw DriverApiException(value.first.toString());
+          throw DriverApiException(
+            value.first.toString(),
+            statusCode: response.statusCode,
+          );
         }
       }
     }
     throw DriverApiException(
       response.body['message']?.toString() ?? 'Không thể hoàn tất yêu cầu.',
+      statusCode: response.statusCode,
     );
   }
 
@@ -562,17 +1158,12 @@ class DriverApi implements DriverGateway, DriverSupportGateway {
     }
     return data.whereType<Map<String, dynamic>>().toList(growable: false);
   }
-
-  String _uuid() {
-    final value = DateTime.now().microsecondsSinceEpoch.toRadixString(16);
-    final padded = value.padLeft(32, '0');
-    return '${padded.substring(0, 8)}-${padded.substring(8, 12)}-4${padded.substring(13, 16)}-a${padded.substring(17, 20)}-${padded.substring(20, 32)}';
-  }
 }
 
 class DriverApiException implements Exception {
-  const DriverApiException(this.message);
+  const DriverApiException(this.message, {this.statusCode});
   final String message;
+  final int? statusCode;
 
   @override
   String toString() => message;

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'api_transport_stub.dart' if (dart.library.io) 'api_transport_io.dart';
 
 class ApiResponse {
@@ -14,6 +16,16 @@ abstract interface class ApiTransport {
     required String token,
     Map<String, dynamic>? body,
     Map<String, String> headers = const {},
+  });
+}
+
+abstract interface class MultipartApiTransport {
+  Future<ApiResponse> upload({
+    required Uri uri,
+    required String token,
+    required String name,
+    required Uint8List bytes,
+    required Map<String, String> fields,
   });
 }
 

@@ -1,7 +1,6 @@
-// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
-
 import 'dart:convert';
-import 'dart:html' as html;
+
+import 'package:http/http.dart' as http;
 
 import 'api_transport.dart';
 
@@ -16,26 +15,33 @@ class WebApiTransport implements ApiTransport {
     Map<String, dynamic>? body,
     Map<String, String> headers = const {},
   }) async {
-    final requestHeaders = <String, String>{
-      'Accept': 'application/json',
-      if (token.isNotEmpty) 'Authorization': 'Bearer $token',
-      if (body != null) 'Content-Type': 'application/json',
-      ...headers,
-    };
-    final request = await html.HttpRequest.request(
-      uri.toString(),
-      method: method,
-      requestHeaders: requestHeaders,
-      sendData: body == null ? null : jsonEncode(body),
-    );
-    final content = request.responseText ?? '';
-    final decoded = content.isEmpty ? <String, dynamic>{} : jsonDecode(content);
+    final client = http.Client();
+    try {
+      final request = http.Request(method, uri);
+      request.headers.addAll({
+        'Accept': 'application/json',
+        if (token.isNotEmpty) 'Authorization': 'Bearer $token',
+        if (body != null) 'Content-Type': 'application/json',
+        ...headers,
+      });
+      if (body != null) {
+        request.body = jsonEncode(body);
+      }
 
-    return ApiResponse(
-      statusCode: request.status ?? 0,
-      body: decoded is Map<String, dynamic>
-          ? decoded
-          : <String, dynamic>{'data': decoded},
-    );
+      final response = await http.Response.fromStream(
+        await client.send(request),
+      );
+      final decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body);
+      return ApiResponse(
+        statusCode: response.statusCode,
+        body: decoded is Map<String, dynamic>
+            ? decoded
+            : <String, dynamic>{'data': decoded},
+      );
+    } finally {
+      client.close();
+    }
   }
 }

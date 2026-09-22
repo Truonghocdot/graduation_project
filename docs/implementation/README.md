@@ -40,8 +40,8 @@ Không viết nghiệp vụ độc lập trong `service`, client hoặc driver a
 | 6 | `COMPLETED` | Delivery/Drive execution, private evidence, COD và location snapshot |
 | 7 | `COMPLETED` | Settlement, SePay top-up, withdrawal, refund và finance admin |
 | 8 | `COMPLETED` | Support, rating, incident, chat, notification persistence, Filament operations và mobile support actions |
-| 9 | `PENDING` | Customer app integration |
-| 10 | `PENDING` | Driver app integration |
+| 9 | `COMPLETED` | Customer auth/session, Delivery/Drive, wallet, support và reconnect snapshot |
+| 10 | `COMPLETED` | Driver onboarding, availability/GPS, offer/execution, evidence, earning và support |
 | 11 | `PENDING` | End-to-end hardening, demo seed và deployment guide |
 
 ## 3. Phase 0 - Foundation
@@ -317,29 +317,32 @@ Service đã có health endpoint, Redis/RabbitMQ consumer, Socket.IO room author
 - Worker tests: `PhaseEightSupportTest`, `PhaseEightChatNotificationTest`, `PhaseEightAuthorizationTest`, `FilamentSupportOperationsTest`.
 - Realtime tests: `service/src/realtime/roomGateway.test.ts`; mobile API/UI tests và `flutter analyze` pass.
 
-## 12. Phase 9-10 - Mobile integration
+## 12. Phase 9-10 - Mobile integration - `COMPLETED`
 
-Mobile chỉ bắt đầu sau khi worker contract và service event fixture của phase tương ứng đã pass.
+Hai app gọi API worker để quyết định trạng thái; Socket.IO chỉ báo có thay đổi và mỗi lần reconnect đều nạp lại snapshot qua HTTPS. Bản cài giữ token và ID thiết bị ngẫu nhiên trong secure storage, không đưa token vào log hay URL.
 
-### `mobile/client/`
+### Phase 9 - `mobile/client/`
 
-- `lib/core/network/`: API client, auth interceptor, error mapping.
-- `lib/features/auth/`: login/register/OTP/reset.
-- `lib/features/catalog/`: vehicle types.
-- `lib/features/delivery/`, `lib/features/drive/`: quote/request/tracking.
-- `lib/features/wallet/`, `lib/features/support/`: finance/support.
-- `lib/core/realtime/`: Socket.IO client/reconnect/snapshot sync.
+- `lib/api/booking_api.dart`: login/register/verify/resend OTP, quên/đặt lại mật khẩu, catalog, quote, tạo/hủy Delivery/Drive, ví/nạp tiền, ticket/reply, chat, SOS, rating và notification.
+- `lib/api/session_store.dart`: giữ token, ID bản cài và ID yêu cầu gần nhất trong secure storage; logout gọi worker thu hồi token rồi xóa phiên cục bộ, lỗi `401` cũng xóa phiên.
+- `lib/api/booking_realtime.dart`: nhận `booking:event`/`notification:event`, join lại booking room khi reconnect; `lib/booking_app.dart` đồng bộ lại snapshot qua API và có polling fallback.
+- `lib/api/api_transport_web.dart`: trả cả JSON lỗi `401/422` cho UI xử lý; không coi HTTP lỗi nghiệp vụ là lỗi kết nối.
+- UI có đăng ký/xác minh/reset, chọn xe, báo giá/thanh toán, chuyến gần nhất, wallet/top-up, ticket, chat, SOS, rating và notification.
 
-### `mobile/driver/`
+### Phase 10 - `mobile/driver/`
 
-- `lib/core/network/`, `lib/core/realtime/`: shared contract patterns.
-- `lib/features/auth/`, `lib/features/onboarding/`: profile/document/vehicle.
-- `lib/features/availability/`: online/offline/location permission.
-- `lib/features/offers/`: offer list, accept/decline/expiry.
-- `lib/features/delivery/`, `lib/features/drive/`: execution commands/evidence.
-- `lib/features/earnings/`, `lib/features/support/`: settlement/withdrawal/support.
+- `lib/api/driver_api.dart`: phiên onboarding bằng `CUSTOMER_APP` khi chưa được duyệt; đăng nhập lại `DRIVER_APP` sau duyệt. Có hồ sơ, xe, multipart giấy tờ/evidence, catalog, availability, location, offer, execution, ngân hàng/rút tiền và support.
+- `lib/api/device_location.dart`: xin quyền vị trí, lấy GPS thật; không gửi tọa độ điểm đón/điểm trả giả làm vị trí hiện tại. Manifest Android và Info.plist iOS khai báo quyền dùng khi app mở.
+- `lib/main.dart`: màn hình hồ sơ trước duyệt; sau duyệt có bật/tắt nhận chuyến, GPS heartbeat khi rảnh, location snapshot khi đang có assignment, bằng chứng pickup/delivery, xác nhận cash/COD, thu nhập và ngân hàng.
+- `lib/api/driver_realtime.dart` và `lib/api/session_store.dart`: join lại booking room, nạp lại offer sau reconnect, lưu phiên và xóa khi logout/`401`.
+- Worker `DriverAvailabilityService` đã sửa presence: chỉ ghi Redis khi online, xóa Redis khi offline. Heartbeat online gia hạn TTL 15 giây; `/driver/location` chỉ dùng cho assignment active.
 
-Mỗi app cần test API parsing, auth expiry, reconnect, permission và offline command retry; không đặt pricing/matching/settlement logic trong Dart.
+### Gate đã kiểm tra
+
+- Customer: API/widget tests gồm auth, error `401`, khôi phục chuyến, reconnect, form 320px, retry chat giữ nguyên `client_message_id`; `flutter analyze` sạch và build web thành công.
+- Driver: API/widget tests gồm onboarding, upload, availability, permission denied, reconnect, retry SOS giữ nguyên `Idempotency-Key`; `flutter analyze` sạch và APK debug build thành công.
+- Command đang chờ giữ nguyên key khi người dùng retry trong phiên đang mở; sau relaunch app lấy lại trạng thái worker trước khi cho thao tác mới. Chưa có hàng đợi command offline bền vững hoặc push provider: thuộc hardening Phase 11.
+- iOS chưa thể smoke/build trên máy Windows này; cần kiểm tra trên macOS cùng cấu hình signing/Keychain trong Phase 11. Business pricing/matching/settlement không nằm trong Dart.
 
 ## 13. Phase 11 - Hardening và demo
 

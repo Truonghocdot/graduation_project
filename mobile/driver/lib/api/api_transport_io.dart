@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+
+import 'package:http/http.dart' as http;
 
 import 'api_transport.dart';
 
 ApiTransport createPlatformTransport() => IoApiTransport();
 
-class IoApiTransport implements ApiTransport {
+class IoApiTransport implements ApiTransport, MultipartApiTransport {
   @override
   Future<ApiResponse> send({
     required String method,
@@ -32,6 +35,36 @@ class IoApiTransport implements ApiTransport {
       final decoded = content.isEmpty
           ? <String, dynamic>{}
           : jsonDecode(content);
+      return ApiResponse(
+        response.statusCode,
+        decoded is Map<String, dynamic> ? decoded : {'data': decoded},
+      );
+    } finally {
+      client.close();
+    }
+  }
+
+  @override
+  Future<ApiResponse> upload({
+    required Uri uri,
+    required String token,
+    required String name,
+    required Uint8List bytes,
+    required Map<String, String> fields,
+  }) async {
+    final request = http.MultipartRequest('POST', uri)
+      ..headers['Accept'] = 'application/json'
+      ..headers['Authorization'] = 'Bearer $token'
+      ..fields.addAll(fields)
+      ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: name));
+    final client = http.Client();
+    try {
+      final response = await http.Response.fromStream(
+        await client.send(request),
+      );
+      final decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : jsonDecode(response.body);
       return ApiResponse(
         response.statusCode,
         decoded is Map<String, dynamic> ? decoded : {'data': decoded},

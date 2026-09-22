@@ -108,6 +108,8 @@ class FakeDriverGateway implements DriverGateway {
     required String idempotencyKey,
     double? cashCollected,
     double? codCollected,
+    String? evidenceId,
+    String? outOfGeofenceReason,
   }) async {
     return offer.serviceStatus;
   }

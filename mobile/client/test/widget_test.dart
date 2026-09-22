@@ -1,5 +1,7 @@
 import 'package:client/api/booking_api.dart';
 import 'package:client/booking_app.dart';
+import 'package:client/api/session_store.dart';
+import 'package:client/api/booking_realtime.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -74,6 +76,114 @@ void main() {
     expect(find.text('CANCELLED'), findsOneWidget);
     expect(gateway.cancelCalls, 1);
   });
+
+  testWidgets(
+    'restores the most recent request and clears the session on logout',
+    (tester) async {
+      final store = FakeBookingSessionStore();
+      await tester.pumpWidget(
+        BookingApp(
+          gateway: FakeBookingGateway(),
+          sessionStore: store,
+          initialSession: const BookingSession(
+            baseUrl: 'http://localhost/api/v1',
+            token: 'test-token',
+            vehicleTypeId: 'vehicle-uuid',
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Mã yêu cầu'), findsOneWidget);
+      expect(find.text('request-uuid'), findsOneWidget);
+      await tester.tap(find.byTooltip('Thêm'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Đăng xuất'));
+      await tester.pumpAndSettle();
+      expect(store.cleared, isTrue);
+      expect(find.byKey(const Key('login-button')), findsOneWidget);
+    },
+  );
+
+  testWidgets('booking controls fit on a narrow phone', (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(
+      BookingApp(
+        gateway: FakeBookingGateway(),
+        initialSession: const BookingSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: 'test-token',
+          vehicleTypeId: 'vehicle-uuid',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.byTooltip('Ví lạnh'));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('reconnect refreshes the authoritative booking snapshot', (
+    tester,
+  ) async {
+    final gateway = FakeBookingGateway();
+    final realtime = FakeBookingRealtime();
+    await tester.pumpWidget(
+      BookingApp(
+        gateway: gateway,
+        sessionStore: FakeBookingSessionStore(),
+        realtime: realtime,
+        initialSession: const BookingSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: 'test-token',
+          vehicleTypeId: 'vehicle-uuid',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(realtime.watchedRequest, 'request-uuid');
+    gateway.snapshotStatus = 'COMPLETED';
+    realtime.reconnected();
+    await tester.pumpAndSettle();
+    expect(find.text('COMPLETED'), findsOneWidget);
+    await tester.pumpWidget(const SizedBox());
+  });
+}
+
+class FakeBookingRealtime extends BookingRealtime {
+  void Function()? _onChange;
+  String? watchedRequest;
+
+  @override
+  void connect({
+    required String url,
+    required String token,
+    required void Function() onChange,
+  }) => _onChange = onChange;
+  @override
+  void watch(String? requestId) => watchedRequest = requestId;
+  void reconnected() => _onChange?.call();
+  @override
+  void dispose() {}
+}
+
+class FakeBookingSessionStore implements BookingSessionStore {
+  bool cleared = false;
+
+  @override
+  Future<String?> readToken() async => 'test-token';
+  @override
+  Future<String?> readLastRequestId() async => 'request-uuid';
+  @override
+  Future<void> writeToken(String token) async {}
+  @override
+  Future<void> writeLastRequestId(String id) async {}
+  @override
+  Future<void> clear() async => cleared = true;
 }
 
 class FakeBookingGateway implements BookingGateway {
@@ -81,6 +191,7 @@ class FakeBookingGateway implements BookingGateway {
   int quoteCalls = 0;
   int createCalls = 0;
   int cancelCalls = 0;
+  String snapshotStatus = 'SEARCHING_DRIVER';
 
   @override
   Future<String> login({
@@ -162,7 +273,7 @@ class FakeBookingGateway implements BookingGateway {
     return ServiceRequestSummary(
       id: serviceRequestId,
       service: ServiceKind.delivery,
-      status: 'SEARCHING_DRIVER',
+      status: snapshotStatus,
       paymentMethod: PaymentChoice.wallet,
       customerPayable: 18000,
     );

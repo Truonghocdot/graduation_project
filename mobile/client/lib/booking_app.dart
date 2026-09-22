@@ -3,16 +3,23 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'api/booking_api.dart';
+import 'api/booking_realtime.dart';
+import 'api/request_id.dart';
+import 'api/session_store.dart';
 
 class BookingApp extends StatelessWidget {
   const BookingApp({
     super.key,
     required this.gateway,
     required this.initialSession,
+    this.sessionStore,
+    this.realtime,
   });
 
   final BookingGateway gateway;
   final BookingSession initialSession;
+  final BookingSessionStore? sessionStore;
+  final BookingRealtime? realtime;
 
   @override
   Widget build(BuildContext context) {
@@ -50,7 +57,12 @@ class BookingApp extends StatelessWidget {
           ),
         ),
       ),
-      home: BookingWorkspace(gateway: gateway, initialSession: initialSession),
+      home: BookingWorkspace(
+        gateway: gateway,
+        initialSession: initialSession,
+        sessionStore: sessionStore,
+        realtime: realtime,
+      ),
     );
   }
 }
@@ -60,10 +72,14 @@ class BookingWorkspace extends StatefulWidget {
     super.key,
     required this.gateway,
     required this.initialSession,
+    this.sessionStore,
+    this.realtime,
   });
 
   final BookingGateway gateway;
   final BookingSession initialSession;
+  final BookingSessionStore? sessionStore;
+  final BookingRealtime? realtime;
 
   @override
   State<BookingWorkspace> createState() => _BookingWorkspaceState();
@@ -93,22 +109,27 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
   DateTime? _scheduledAt;
   QuoteSummary? _quote;
   ServiceRequestSummary? _serviceRequest;
+  String? _lastRequestId;
   String? _createIdempotencyKey;
+  String? _cancelIdempotencyKey;
   bool _busy = false;
   String? _error;
   Timer? _snapshotTimer;
+  Timer? _authTimer;
 
   @override
   void initState() {
     super.initState();
     if (_session.token.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _loadVehicleTypes());
+      WidgetsBinding.instance.addPostFrameCallback((_) => _restoreSession());
     }
   }
 
   @override
   void dispose() {
     _snapshotTimer?.cancel();
+    _authTimer?.cancel();
+    widget.realtime?.dispose();
     for (final controller in [
       _pickupAddress,
       _pickupLatitude,
@@ -138,7 +159,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
           if (_session.token.isNotEmpty &&
               widget.gateway is BookingSupportGateway)
             IconButton(
-              tooltip: 'Thong bao',
+              tooltip: 'Thông báo',
               onPressed: _busy ? null : _showNotifications,
               icon: const Icon(Icons.notifications_outlined),
             ),
@@ -149,10 +170,33 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               icon: const Icon(Icons.account_balance_wallet_outlined),
             ),
           if (_session.token.isNotEmpty)
-            IconButton(
-              tooltip: 'Đăng xuất',
-              onPressed: _busy ? null : _logout,
-              icon: const Icon(Icons.logout),
+            PopupMenuButton<String>(
+              tooltip: 'Thêm',
+              enabled: !_busy,
+              icon: const Icon(Icons.more_vert),
+              onSelected: (value) {
+                switch (value) {
+                  case 'history':
+                    _loadLastRequest();
+                  case 'support':
+                    _showTickets();
+                  case 'logout':
+                    _logout();
+                }
+              },
+              itemBuilder: (context) => [
+                if (_lastRequestId != null)
+                  const PopupMenuItem(
+                    value: 'history',
+                    child: Text('Yêu cầu gần nhất'),
+                  ),
+                if (widget.gateway is BookingSupportGateway)
+                  const PopupMenuItem(
+                    value: 'support',
+                    child: Text('Yêu cầu hỗ trợ'),
+                  ),
+                const PopupMenuItem(value: 'logout', child: Text('Đăng xuất')),
+              ],
             ),
         ],
       ),
@@ -319,6 +363,21 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
                   label: 'Đăng nhập',
                   onPressed: _login,
                 ),
+                if (widget.gateway is CustomerAccountGateway) ...[
+                  const SizedBox(height: 8),
+                  TextButton(
+                    onPressed: _busy ? null : _register,
+                    child: const Text('Tạo tài khoản'),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _verifyPhone,
+                    child: const Text('Xác minh tài khoản'),
+                  ),
+                  TextButton(
+                    onPressed: _busy ? null : _forgotPassword,
+                    child: const Text('Quên mật khẩu'),
+                  ),
+                ],
               ],
             ),
           ),
@@ -410,7 +469,9 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       children: [
         Icon(icon, size: 20, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
-        Text(label, style: Theme.of(context).textTheme.titleMedium),
+        Expanded(
+          child: Text(label, style: Theme.of(context).textTheme.titleMedium),
+        ),
       ],
     );
   }
@@ -429,7 +490,9 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
           children: [
             Icon(icon, size: 16),
             const SizedBox(width: 6),
-            Text(label, style: Theme.of(context).textTheme.labelLarge),
+            Expanded(
+              child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+            ),
           ],
         ),
         const SizedBox(height: 8),
@@ -518,6 +581,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
   }
 
   Widget _quotePanel(QuoteSummary quote) {
+    final expired = !quote.expiresAt.isAfter(DateTime.now());
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -528,7 +592,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               children: [
                 Text('Báo giá', style: Theme.of(context).textTheme.titleMedium),
                 const Spacer(),
-                _statusLabel('Còn hiệu lực'),
+                _statusLabel(expired ? 'Hết hạn' : 'Còn hiệu lực'),
               ],
             ),
             const SizedBox(height: 16),
@@ -603,7 +667,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               label: _service == ServiceKind.delivery
                   ? 'Đặt giao hàng'
                   : 'Đặt chuyến',
-              onPressed: _createServiceRequest,
+              onPressed: expired ? null : _createServiceRequest,
             ),
           ],
         ),
@@ -645,15 +709,25 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  OutlinedButton.icon(
-                    onPressed: _busy ? null : () => _showChat(request),
-                    icon: const Icon(Icons.chat_bubble_outline),
-                    label: const Text('Chat'),
-                  ),
+                  if (const {
+                    'ASSIGNED',
+                    'DRIVER_ARRIVING_PICKUP',
+                    'AT_PICKUP',
+                    'PICKED_UP',
+                    'IN_DELIVERY',
+                    'DRIVER_ARRIVING',
+                    'DRIVER_ARRIVED',
+                    'IN_TRIP',
+                  }.contains(request.status))
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : () => _showChat(request),
+                      icon: const Icon(Icons.chat_bubble_outline),
+                      label: const Text('Chat'),
+                    ),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : () => _openSupport(request),
                     icon: const Icon(Icons.support_agent),
-                    label: const Text('Ho tro'),
+                    label: const Text('Hỗ trợ'),
                   ),
                   OutlinedButton.icon(
                     onPressed: _busy ? null : () => _reportIncident(request),
@@ -666,19 +740,19 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
                     OutlinedButton.icon(
                       onPressed: _busy ? null : () => _rate(request),
                       icon: const Icon(Icons.star_outline),
-                      label: const Text('Danh gia'),
+                      label: const Text('Đánh giá'),
                     ),
                 ],
               ),
               const SizedBox(height: 8),
             ],
-            OutlinedButton.icon(
-              onPressed: _busy || request.status == 'CANCELLED'
-                  ? null
-                  : _cancelServiceRequest,
-              icon: const Icon(Icons.cancel_outlined),
-              label: const Text('Hủy yêu cầu'),
-            ),
+            if (request.status == 'SCHEDULED' ||
+                request.status == 'SEARCHING_DRIVER')
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _cancelServiceRequest,
+                icon: const Icon(Icons.cancel_outlined),
+                label: const Text('Hủy yêu cầu'),
+              ),
           ],
         ),
       ),
@@ -839,6 +913,9 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
         idempotencyKey: _createIdempotencyKey!,
       );
       setState(() => _serviceRequest = request);
+      _lastRequestId = request.id;
+      await widget.sessionStore?.writeLastRequestId(request.id);
+      widget.realtime?.watch(request.id);
       _startSnapshotPolling();
     });
   }
@@ -865,14 +942,15 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
     );
     if (confirmed != true) return;
     await _run(() async {
+      _cancelIdempotencyKey ??= newRequestId();
       final cancelled = await widget.gateway.cancelServiceRequest(
         session: _session,
         serviceRequest: request,
-        idempotencyKey:
-            'mobile-cancel-${DateTime.now().microsecondsSinceEpoch}',
+        idempotencyKey: _cancelIdempotencyKey!,
         reasonCode: 'CUSTOMER_CHANGED_MIND',
       );
       setState(() => _serviceRequest = cancelled);
+      _cancelIdempotencyKey = null;
       _snapshotTimer?.cancel();
     });
   }
@@ -886,7 +964,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       final send = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
-          title: const Text('Chat chuyen di'),
+          title: const Text('Chat chuyến đi'),
           content: SizedBox(
             width: 440,
             child: Column(
@@ -895,7 +973,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxHeight: 240),
                   child: messages.isEmpty
-                      ? const Text('Chua co tin nhan.')
+                      ? const Text('Chưa có tin nhắn.')
                       : ListView.builder(
                           shrinkWrap: true,
                           itemCount: messages.length,
@@ -910,7 +988,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
                 TextField(
                   controller: input,
                   maxLength: 2000,
-                  decoration: const InputDecoration(labelText: 'Tin nhan'),
+                  decoration: const InputDecoration(labelText: 'Tin nhắn'),
                 ),
               ],
             ),
@@ -918,12 +996,12 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Dong'),
+              child: const Text('Đóng'),
             ),
             FilledButton.icon(
               onPressed: () => Navigator.pop(context, true),
               icon: const Icon(Icons.send),
-              label: const Text('Gui'),
+              label: const Text('Gửi'),
             ),
           ],
         ),
@@ -951,32 +1029,32 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
     final submit = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Tao yeu cau ho tro'),
+        title: const Text('Tạo yêu cầu hỗ trợ'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: subject,
               maxLength: 191,
-              decoration: const InputDecoration(labelText: 'Tieu de'),
+              decoration: const InputDecoration(labelText: 'Tiêu đề'),
             ),
             const SizedBox(height: 8),
             TextField(
               controller: description,
               maxLength: 5000,
               maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Mo ta'),
+              decoration: const InputDecoration(labelText: 'Mô tả'),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huy'),
+            child: const Text('Hủy'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Gui'),
+            child: const Text('Gửi'),
           ),
         ],
       ),
@@ -1003,22 +1081,32 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Bao dong SOS?'),
-        content: TextField(
-          controller: description,
-          maxLength: 5000,
-          maxLines: 3,
-          decoration: const InputDecoration(labelText: 'Mo ta su co'),
+        title: const Text('Báo động SOS?'),
+        scrollable: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Nếu nguy hiểm tức thời, hãy liên hệ dịch vụ khẩn cấp địa phương.',
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: description,
+              maxLength: 5000,
+              maxLines: 3,
+              decoration: const InputDecoration(labelText: 'Mô tả sự cố'),
+            ),
+          ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Huy'),
+            child: const Text('Hủy'),
           ),
           FilledButton.icon(
             onPressed: () => Navigator.pop(context, true),
             icon: const Icon(Icons.sos_outlined),
-            label: const Text('Bao ngay'),
+            label: const Text('Báo ngay'),
           ),
         ],
       ),
@@ -1044,13 +1132,13 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Danh gia tai xe'),
+          title: const Text('Đánh giá tài xế'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               DropdownButtonFormField<int>(
                 initialValue: score,
-                decoration: const InputDecoration(labelText: 'So sao'),
+                decoration: const InputDecoration(labelText: 'Số sao'),
                 items: [1, 2, 3, 4, 5]
                     .map(
                       (value) => DropdownMenuItem(
@@ -1065,18 +1153,18 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               TextField(
                 controller: comment,
                 maxLength: 1000,
-                decoration: const InputDecoration(labelText: 'Nhan xet'),
+                decoration: const InputDecoration(labelText: 'Nhận xét'),
               ),
             ],
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Huy'),
+              child: const Text('Hủy'),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Gui'),
+              child: const Text('Gửi'),
             ),
           ],
         ),
@@ -1105,10 +1193,10 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
         builder: (context) => ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            Text('Thong bao', style: Theme.of(context).textTheme.titleLarge),
+            Text('Thông báo', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             if (notifications.isEmpty)
-              const ListTile(title: Text('Chua co thong bao.')),
+              const ListTile(title: Text('Chưa có thông báo.')),
             for (final notification in notifications)
               ListTile(
                 leading: Icon(
@@ -1120,7 +1208,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
                 trailing: notification.isRead
                     ? null
                     : IconButton(
-                        tooltip: 'Danh dau da doc',
+                        tooltip: 'Đánh dấu đã đọc',
                         onPressed: () async {
                           await support.markNotificationRead(
                             _session,
@@ -1136,6 +1224,115 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       );
     } catch (error) {
       if (mounted) setState(() => _error = error.toString());
+    }
+  }
+
+  Future<void> _showTickets() async {
+    final support = widget.gateway as BookingSupportGateway;
+    try {
+      final tickets = await support.loadTickets(_session);
+      if (!mounted) return;
+      await showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        builder: (context) => SafeArea(
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.65,
+            child: ListView(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Yêu cầu hỗ trợ',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                ),
+                if (tickets.isEmpty)
+                  const ListTile(title: Text('Chưa có yêu cầu.')),
+                for (final ticket in tickets)
+                  ListTile(
+                    title: Text(ticket.subject),
+                    subtitle: Text(ticket.status),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _showTicket(ticket.id);
+                    },
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    }
+  }
+
+  Future<void> _showTicket(String id) async {
+    final support = widget.gateway as BookingSupportGateway;
+    final input = TextEditingController();
+    try {
+      final ticket = await support.loadTicket(_session, id);
+      if (!mounted) return;
+      final send = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text(ticket.subject),
+          content: SizedBox(
+            width: 440,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(ticket.status),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 250),
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      for (final message in ticket.messages)
+                        ListTile(
+                          title: Text(message.senderName),
+                          subtitle: Text(message.body),
+                        ),
+                    ],
+                  ),
+                ),
+                if (ticket.status != 'CLOSED')
+                  TextField(
+                    controller: input,
+                    maxLength: 5000,
+                    decoration: const InputDecoration(labelText: 'Phản hồi'),
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Đóng'),
+            ),
+            if (ticket.status != 'CLOSED')
+              FilledButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Gửi'),
+              ),
+          ],
+        ),
+      );
+      if (send == true && input.text.trim().isNotEmpty) {
+        await _run(
+          () => support.replyToTicket(
+            session: _session,
+            id: id,
+            body: input.text.trim(),
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      input.dispose();
     }
   }
 
@@ -1157,6 +1354,9 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
     try {
       await operation();
     } catch (error) {
+      if (error is BookingApiException && error.statusCode == 401) {
+        await _clearSession();
+      }
       if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -1186,7 +1386,251 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
         _vehicles = vehicles;
         _session = authenticated.copyWith(vehicleTypeId: vehicles.first.id);
       });
+      await widget.sessionStore?.writeToken(token);
+      _connectRealtime();
     });
+  }
+
+  Future<void> _register() async {
+    final account = widget.gateway as CustomerAccountGateway;
+    final name = TextEditingController();
+    final password = TextEditingController();
+    final confirm = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Tạo tài khoản'),
+        content: SizedBox(
+          width: 400,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: name,
+                  decoration: const InputDecoration(labelText: 'Họ tên'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: password,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'Mật khẩu'),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: confirm,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    labelText: 'Xác nhận mật khẩu',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Tiếp tục'),
+          ),
+        ],
+      ),
+    );
+    if (submitted == true) {
+      if (_phone.text.trim().isEmpty ||
+          name.text.trim().isEmpty ||
+          password.text.isEmpty ||
+          password.text != confirm.text) {
+        setState(
+          () => _error = 'Nhập số điện thoại, họ tên và mật khẩu trùng khớp.',
+        );
+      } else {
+        await _run(
+          () => account.register(
+            baseUrl: _session.baseUrl,
+            name: name.text.trim(),
+            phone: _phone.text.trim(),
+            password: password.text,
+          ),
+        );
+        if (_error == null && mounted) await _verifyPhone();
+      }
+    }
+    name.dispose();
+    password.dispose();
+    confirm.dispose();
+  }
+
+  Future<void> _verifyPhone() async {
+    if (_phone.text.trim().isEmpty) {
+      setState(() => _error = 'Nhập số điện thoại để xác minh.');
+      return;
+    }
+    final account = widget.gateway as CustomerAccountGateway;
+    final code = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác minh số điện thoại'),
+        content: TextField(
+          controller: code,
+          maxLength: 6,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(labelText: 'Mã OTP'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              try {
+                await account.resendPhone(
+                  baseUrl: _session.baseUrl,
+                  phone: _phone.text.trim(),
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã yêu cầu gửi lại mã.')),
+                  );
+                }
+              } catch (error) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context)
+                      .showSnackBar(SnackBar(content: Text(error.toString())));
+                }
+              }
+            },
+            child: const Text('Gửi lại'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Xác minh'),
+          ),
+        ],
+      ),
+    );
+    if (submitted == true && code.text.trim().length == 6) {
+      await _run(() async {
+        final token = await account.verifyPhone(
+          baseUrl: _session.baseUrl,
+          phone: _phone.text.trim(),
+          code: code.text.trim(),
+        );
+        final authenticated = _session.copyWith(
+          token: token,
+          vehicleTypeId: '',
+        );
+        final vehicles = await widget.gateway.loadVehicleTypes(authenticated);
+        if (!mounted) return;
+        setState(() {
+          _vehicles = vehicles;
+          _session = authenticated.copyWith(
+            vehicleTypeId: vehicles.isNotEmpty ? vehicles.first.id : '',
+          );
+        });
+        await widget.sessionStore?.writeToken(token);
+        _connectRealtime();
+      });
+    }
+    code.dispose();
+  }
+
+  Future<void> _forgotPassword() async {
+    final account = widget.gateway as CustomerAccountGateway;
+    if (_phone.text.trim().isEmpty) {
+      setState(() => _error = 'Nhập số điện thoại trước khi đặt lại mật khẩu.');
+      return;
+    }
+    await _run(
+      () => account.forgotPassword(
+        baseUrl: _session.baseUrl,
+        phone: _phone.text.trim(),
+      ),
+    );
+    if (_error != null || !mounted) return;
+    final code = TextEditingController();
+    final password = TextEditingController();
+    final confirm = TextEditingController();
+    final submitted = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đặt lại mật khẩu'),
+        content: SizedBox(
+          width: 400,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: code,
+                maxLength: 6,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Mã OTP'),
+              ),
+              TextField(
+                controller: password,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirm,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Xác nhận mật khẩu',
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Hủy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+    if (submitted == true) {
+      if (code.text.trim().length != 6 ||
+          password.text.isEmpty ||
+          password.text != confirm.text) {
+        setState(() => _error = 'Mã OTP hoặc xác nhận mật khẩu không hợp lệ.');
+      } else {
+        await _run(() async {
+          final resetToken = await account.verifyReset(
+            baseUrl: _session.baseUrl,
+            phone: _phone.text.trim(),
+            code: code.text.trim(),
+          );
+          await account.resetPassword(
+            baseUrl: _session.baseUrl,
+            phone: _phone.text.trim(),
+            resetToken: resetToken,
+            password: password.text,
+          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Mật khẩu đã cập nhật. Hãy đăng nhập.'),
+              ),
+            );
+          }
+        });
+      }
+    }
+    code.dispose();
+    password.dispose();
+    confirm.dispose();
   }
 
   Future<void> _loadVehicleTypes() async {
@@ -1201,14 +1645,109 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
     });
   }
 
-  void _logout() {
+  Future<void> _restoreSession() async {
+    await _run(() async {
+      if (widget.gateway is CustomerAccountGateway) {
+        await (widget.gateway as CustomerAccountGateway).validateSession(
+          _session,
+        );
+      }
+      final vehicles = await widget.gateway.loadVehicleTypes(_session);
+      if (!mounted) return;
+      setState(() {
+        _vehicles = vehicles;
+        if (_session.vehicleTypeId.isEmpty && vehicles.isNotEmpty) {
+          _session = _session.copyWith(vehicleTypeId: vehicles.first.id);
+        }
+      });
+      final requestId = await widget.sessionStore?.readLastRequestId();
+      _lastRequestId = requestId;
+      if (requestId != null) {
+        try {
+          final snapshot = await widget.gateway.loadServiceRequest(
+            _session,
+            requestId,
+          );
+          if (mounted) setState(() => _serviceRequest = snapshot);
+          _startSnapshotPolling();
+        } on BookingApiException catch (error) {
+          if (error.statusCode == 401) rethrow;
+        }
+      }
+      _connectRealtime();
+    });
+  }
+
+  void _connectRealtime() {
+    _authTimer?.cancel();
+    if (widget.gateway is CustomerAccountGateway) {
+      _authTimer = Timer.periodic(const Duration(seconds: 30), (_) async {
+        try {
+          await (widget.gateway as CustomerAccountGateway).validateSession(
+            _session,
+          );
+        } on BookingApiException catch (error) {
+          if (error.statusCode == 401) await _clearSession();
+        } catch (_) {
+          // A transient network failure does not invalidate the local session.
+        }
+      });
+    }
+    if (widget.realtime == null) return;
+    const configured = String.fromEnvironment('REALTIME_URL');
+    final apiUri = Uri.parse(_session.baseUrl);
+    final url = configured.isNotEmpty
+        ? configured
+        : apiUri
+              .replace(port: 3000, path: '', query: '', fragment: '')
+              .toString();
+    widget.realtime!.connect(
+      url: url,
+      token: _session.token,
+      onChange: () => unawaited(_refreshSnapshot()),
+    );
+    widget.realtime!.watch(_serviceRequest?.id);
+  }
+
+  Future<void> _loadLastRequest() async {
+    final requestId = _lastRequestId;
+    if (requestId == null) return;
+    await _run(() async {
+      final snapshot = await widget.gateway.loadServiceRequest(
+        _session,
+        requestId,
+      );
+      if (mounted) setState(() => _serviceRequest = snapshot);
+      widget.realtime?.watch(requestId);
+      _startSnapshotPolling();
+    });
+  }
+
+  Future<void> _logout() async {
+    if (widget.gateway is CustomerAccountGateway) {
+      try {
+        await (widget.gateway as CustomerAccountGateway).logout(_session);
+      } catch (_) {
+        // The local token must still be cleared when the network is unavailable.
+      }
+    }
+    await _clearSession();
+  }
+
+  Future<void> _clearSession() async {
+    await widget.sessionStore?.clear();
     _snapshotTimer?.cancel();
+    _authTimer?.cancel();
+    widget.realtime?.dispose();
+    if (!mounted) return;
     setState(() {
       _session = _session.copyWith(token: '', vehicleTypeId: '');
       _vehicles = const [];
       _quote = null;
       _serviceRequest = null;
       _createIdempotencyKey = null;
+      _cancelIdempotencyKey = null;
+      _lastRequestId = null;
       _error = null;
       _password.clear();
     });
@@ -1218,6 +1757,8 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
     final amount = TextEditingController(text: '100000');
     WalletSummary? wallet;
     WalletTopupSummary? topup;
+    String? topupKey;
+    String? sheetError;
 
     try {
       wallet = await widget.gateway.loadWallet(_session);
@@ -1232,7 +1773,7 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) => StatefulBuilder(
-        builder: (context, setSheetState) => Padding(
+        builder: (context, setSheetState) => SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
             16,
             20,
@@ -1251,6 +1792,10 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               const SizedBox(height: 16),
               TextField(
                 controller: amount,
+                onChanged: (_) {
+                  topupKey = null;
+                  setSheetState(() => sheetError = null);
+                },
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -1260,18 +1805,36 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
               FilledButton.icon(
                 onPressed: () async {
                   final value = double.tryParse(amount.text);
-                  if (value == null) return;
-                  final created = await widget.gateway.createTopup(
-                    session: _session,
-                    amount: value,
-                    idempotencyKey:
-                        'mobile-topup-${DateTime.now().microsecondsSinceEpoch}',
-                  );
-                  setSheetState(() => topup = created);
+                  if (value == null || value <= 0) {
+                    setSheetState(
+                      () => sheetError = 'Số tiền nạp không hợp lệ.',
+                    );
+                    return;
+                  }
+                  try {
+                    topupKey ??= newRequestId();
+                    final created = await widget.gateway.createTopup(
+                      session: _session,
+                      amount: value,
+                      idempotencyKey: topupKey!,
+                    );
+                    setSheetState(() {
+                      topup = created;
+                      sheetError = null;
+                    });
+                    topupKey = null;
+                  } catch (error) {
+                    setSheetState(() => sheetError = error.toString());
+                  }
                 },
                 icon: const Icon(Icons.qr_code_2),
                 label: const Text('Tạo mã nạp tiền'),
               ),
+              if (sheetError != null)
+                Text(
+                  sheetError!,
+                  style: TextStyle(color: Theme.of(context).colorScheme.error),
+                ),
               if (topup != null) ...[
                 const SizedBox(height: 16),
                 SelectableText('Nội dung: ${topup!.reference}'),
@@ -1306,6 +1869,8 @@ class _BookingWorkspaceState extends State<BookingWorkspace> {
       );
       if (!mounted) return;
       setState(() => _serviceRequest = snapshot);
+    } on BookingApiException catch (error) {
+      if (error.statusCode == 401) await _clearSession();
     } catch (_) {
       // The next interval retries from the authoritative worker snapshot.
     }

@@ -2,9 +2,9 @@
 
 > Trạng thái: **Baseline v1.0**
 >
-> Cập nhật: **2026-09-21**
+> Cập nhật: **2026-09-22**
 
-Thư mục này mô tả luồng nghiệp vụ dự kiến cho ứng dụng đặt giao hàng (Delivery) và đặt xe chở khách (Drive). Code hiện tại mới là scaffold, vì vậy tài liệu là baseline để thống nhất sản phẩm, thiết kế dữ liệu, API và test trước khi triển khai.
+Thư mục này mô tả baseline luồng nghiệp vụ cho ứng dụng đặt giao hàng (Delivery) và đặt xe chở khách (Drive). Tiến độ code và những giới hạn chưa nghiệm thu được theo dõi tại [Implementation phases](./implementation/README.md).
 
 ## Quy ước
 

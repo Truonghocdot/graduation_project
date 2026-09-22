@@ -2,9 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import 'api/booking_api.dart';
+import 'api/booking_realtime.dart';
+import 'api/session_store.dart';
 import 'booking_app.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  const sessionStore = SecureBookingSessionStore();
+  final savedToken = await sessionStore.readToken();
+  final deviceId = await sessionStore.installationId();
   const configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
   final defaultBaseUrl = kIsWeb
       ? 'http://127.0.0.1:8000/api/v1'
@@ -14,10 +20,12 @@ void main() {
 
   runApp(
     BookingApp(
-      gateway: BookingApi(),
+      gateway: BookingApi(deviceId: deviceId),
+      sessionStore: sessionStore,
+      realtime: BookingRealtime(),
       initialSession: BookingSession(
         baseUrl: configuredBaseUrl.isEmpty ? defaultBaseUrl : configuredBaseUrl,
-        token: const String.fromEnvironment('API_TOKEN'),
+        token: savedToken ?? const String.fromEnvironment('API_TOKEN'),
         vehicleTypeId: const String.fromEnvironment('VEHICLE_TYPE_ID'),
       ),
     ),

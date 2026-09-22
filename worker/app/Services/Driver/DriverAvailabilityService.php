@@ -114,7 +114,6 @@ class DriverAvailabilityService
                 'online_at' => now(),
                 'offline_at' => null,
             ])->save();
-            $this->presenceStore->markOffline($profile->id);
 
             return $this->load($profile);
         });
@@ -139,6 +138,7 @@ class DriverAvailabilityService
                 'availability_status' => DriverAvailabilityStatus::Offline,
                 'offline_at' => now(),
             ])->save();
+            $this->presenceStore->markOffline($profile->id);
 
             return $this->load($profile);
         });

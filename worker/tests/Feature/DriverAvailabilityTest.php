@@ -1,5 +1,6 @@
 <?php
 
+use App\Contracts\Matching\DriverPresenceStore;
 use App\Enums\DriverAvailabilityStatus;
 use App\Enums\RoleKey;
 use App\Enums\ServiceType;
@@ -11,12 +12,15 @@ use Database\Seeders\RoleSeeder;
 use Database\Seeders\VehicleTypeSeeder;
 use Laravel\Sanctum\Sanctum;
 use Tests\Support\DriverApplicationBuilder;
+use Tests\Support\FakeDriverPresenceStore;
 
 beforeEach(function () {
     $this->seed([RoleSeeder::class, VehicleTypeSeeder::class]);
 });
 
 test('allows an eligible approved driver to go online and offline', function () {
+    $presence = new FakeDriverPresenceStore;
+    $this->app->instance(DriverPresenceStore::class, $presence);
     $admin = User::factory()->create();
     $adminRoleId = Role::query()->where('key', RoleKey::Admin->value)->value('id');
     $admin->roles()->attach($adminRoleId, ['granted_at' => now()]);
@@ -44,10 +48,13 @@ test('allows an eligible approved driver to go online and offline', function () 
     $this->assertDatabaseHas('driver_last_locations', [
         'driver_profile_id' => $profile->id,
     ]);
+    expect($presence->online[$profile->id]['services'])->toBe(['DELIVERY', 'DRIVE'])
+        ->and($presence->offline)->toBe([]);
 
     $this->putJson('/api/v1/driver/availability/offline')
         ->assertOk()
         ->assertJsonPath('data.availability_status', DriverAvailabilityStatus::Offline->value);
+    expect($presence->offline)->toBe([$profile->id]);
 });
 
 test('blocks an approved driver from going online with a negative wallet', function () {
