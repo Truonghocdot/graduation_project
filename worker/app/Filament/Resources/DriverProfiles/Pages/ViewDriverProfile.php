@@ -20,17 +20,17 @@ class ViewDriverProfile extends ViewRecord
     {
         return [
             Action::make('approve')
-                ->label('Approve')
+                ->label('Phê duyệt')
                 ->color('success')
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->driver()->review_status === DriverReviewStatus::PendingReview)
                 ->action(function (DriverReviewService $review): void {
                     $review->approve($this->driver(), $this->admin());
                     $this->refreshFormData(['review_status', 'availability_status', 'reviewed_at']);
-                    Notification::make()->title('Driver approved')->success()->send();
+                    Notification::make()->title('Đã phê duyệt tài xế')->success()->send();
                 }),
             Action::make('reject')
-                ->label('Reject')
+                ->label('Từ chối')
                 ->color('danger')
                 ->form([
                     TextInput::make('reason_code')->required()->maxLength(50),
@@ -39,10 +39,10 @@ class ViewDriverProfile extends ViewRecord
                 ->action(function (array $data, DriverReviewService $review): void {
                     $review->reject($this->driver(), $this->admin(), $data['reason_code']);
                     $this->refreshFormData(['review_status', 'review_reason_code', 'reviewed_at']);
-                    Notification::make()->title('Driver application rejected')->success()->send();
+                    Notification::make()->title('Đã từ chối hồ sơ tài xế')->success()->send();
                 }),
             Action::make('suspend')
-                ->label('Suspend')
+                ->label('Tạm ngưng')
                 ->color('danger')
                 ->form([
                     TextInput::make('reason_code')->required()->maxLength(50),
@@ -51,7 +51,7 @@ class ViewDriverProfile extends ViewRecord
                 ->action(function (array $data, DriverReviewService $review): void {
                     $review->suspend($this->driver(), $this->admin(), $data['reason_code']);
                     $this->refreshFormData(['review_status', 'availability_status', 'review_reason_code']);
-                    Notification::make()->title('Driver suspended')->success()->send();
+                    Notification::make()->title('Đã tạm ngưng tài xế')->success()->send();
                 }),
         ];
     }

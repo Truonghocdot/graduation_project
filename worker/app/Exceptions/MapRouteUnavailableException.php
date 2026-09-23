@@ -8,7 +8,7 @@ use Throwable;
 class MapRouteUnavailableException extends RuntimeException
 {
     public function __construct(
-        string $message = 'The route provider is temporarily unavailable.',
+        string $message = 'Nhà cung cấp lộ trình hiện tạm thời không khả dụng.',
         ?Throwable $previous = null,
     ) {
         parent::__construct($message, previous: $previous);

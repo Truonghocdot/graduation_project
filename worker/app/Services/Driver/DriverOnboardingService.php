@@ -56,7 +56,7 @@ class DriverOnboardingService
 
         if ($profile === null) {
             throw ValidationException::withMessages([
-                'application' => ['A driver application has not been started.'],
+                'application' => ['Chưa bắt đầu hồ sơ đăng ký tài xế.'],
             ]);
         }
 
@@ -84,7 +84,7 @@ class DriverOnboardingService
             && blank($attributes['document_number'] ?? null)
         ) {
             throw ValidationException::withMessages([
-                'document_number' => ['A document number is required for this document type.'],
+                'document_number' => ['Loại giấy tờ này yêu cầu số giấy tờ.'],
             ]);
         }
 
@@ -94,7 +94,7 @@ class DriverOnboardingService
         );
 
         if ($path === false) {
-            throw new RuntimeException('The driver document could not be stored.');
+            throw new RuntimeException('Không thể lưu giấy tờ của tài xế.');
         }
 
         try {
@@ -219,7 +219,7 @@ class DriverOnboardingService
 
             if ($vehicle === null) {
                 throw ValidationException::withMessages([
-                    'vehicle_id' => ['The selected vehicle does not belong to this application.'],
+                    'vehicle_id' => ['Xe được chọn không thuộc hồ sơ này.'],
                 ]);
             }
 
@@ -229,13 +229,13 @@ class DriverOnboardingService
             foreach ($serviceEnums as $serviceType) {
                 if ($serviceType === ServiceType::Drive && $vehicle->vehicleType->passenger_capacity === null) {
                     throw ValidationException::withMessages([
-                        'service_types' => ['The selected vehicle does not support Drive.'],
+                        'service_types' => ['Xe được chọn không hỗ trợ dịch vụ đặt xe.'],
                     ]);
                 }
 
                 if ($serviceType === ServiceType::Delivery && $vehicle->vehicleType->max_weight_kg === null) {
                     throw ValidationException::withMessages([
-                        'service_types' => ['The selected vehicle does not support Delivery.'],
+                        'service_types' => ['Xe được chọn không hỗ trợ dịch vụ giao hàng.'],
                     ]);
                 }
 
@@ -295,7 +295,7 @@ class DriverOnboardingService
         if (! $type->belongsToVehicle()) {
             if ($vehiclePublicId !== null) {
                 throw ValidationException::withMessages([
-                    'vehicle_id' => ['This document type is not attached to a vehicle.'],
+                    'vehicle_id' => ['Loại giấy tờ này không được gắn với xe.'],
                 ]);
             }
 
@@ -306,7 +306,7 @@ class DriverOnboardingService
 
         if ($vehicle === null) {
             throw ValidationException::withMessages([
-                'vehicle_id' => ['A vehicle owned by this application is required.'],
+                'vehicle_id' => ['Cần chọn xe thuộc hồ sơ này.'],
             ]);
         }
 
@@ -348,13 +348,15 @@ class DriverOnboardingService
 
         if ($missing->isNotEmpty()) {
             throw ValidationException::withMessages([
-                'documents' => ['Missing required documents: '.$missing->implode(', ').'.'],
+                'documents' => ['Thiếu giấy tờ bắt buộc: '.$missing
+                    ->map(fn (string $type): string => DriverDocumentType::from($type)->getLabel())
+                    ->implode(', ').'.'],
             ]);
         }
 
         if ($documents->contains(fn (DriverDocument $document): bool => $document->expires_at?->isPast() === true)) {
             throw ValidationException::withMessages([
-                'documents' => ['Expired documents cannot be submitted.'],
+                'documents' => ['Không thể gửi xét duyệt khi có giấy tờ đã hết hạn.'],
             ]);
         }
     }
@@ -374,7 +376,7 @@ class DriverOnboardingService
     private function throwNotEditable(): never
     {
         throw ValidationException::withMessages([
-            'application' => ['The driver application cannot be edited in its current state.'],
+            'application' => ['Không thể chỉnh sửa hồ sơ tài xế ở trạng thái hiện tại.'],
         ]);
     }
 }

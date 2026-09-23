@@ -16,7 +16,7 @@ class BankAccountsRelationManager extends RelationManager
 {
     protected static string $relationship = 'bankAccounts';
 
-    protected static ?string $title = 'Bank accounts';
+    protected static ?string $title = 'Tài khoản ngân hàng';
 
     public function table(Table $table): Table
     {
@@ -40,7 +40,7 @@ class BankAccountsRelationManager extends RelationManager
                         $user = auth()->user();
                         abort_unless($user instanceof User, 403);
                         $service->verify($record, $user);
-                        Notification::make()->title('Bank account verified')->success()->send();
+                        Notification::make()->title('Đã xác minh tài khoản ngân hàng')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

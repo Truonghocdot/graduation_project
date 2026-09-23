@@ -32,7 +32,7 @@ class PricingCatalogAdminService
 
             if ($currentRule !== null && $effectiveFrom->lessThanOrEqualTo($currentRule->effective_from)) {
                 throw ValidationException::withMessages([
-                    'effective_from' => ['A new version must start after the current version.'],
+                    'effective_from' => ['Phiên bản mới phải bắt đầu sau phiên bản hiện tại.'],
                 ]);
             }
 
@@ -63,7 +63,7 @@ class PricingCatalogAdminService
 
             if ($pricingRule->quotes()->exists()) {
                 throw ValidationException::withMessages([
-                    'pricing_rule' => ['A pricing rule used by a quote cannot be edited. Create a new version instead.'],
+                    'pricing_rule' => ['Không thể sửa quy tắc giá đã được dùng trong báo giá. Hãy tạo phiên bản mới.'],
                 ]);
             }
 
@@ -88,7 +88,7 @@ class PricingCatalogAdminService
         $boundary = $this->decodeJson($data['boundary'] ?? null, 'boundary');
 
         if (! is_array($boundary)) {
-            throw ValidationException::withMessages(['boundary' => ['The boundary must be a JSON object.']]);
+            throw ValidationException::withMessages(['boundary' => ['Ranh giới phải là một đối tượng JSON.']]);
         }
 
         $data['boundary'] = $boundary;
@@ -105,7 +105,7 @@ class PricingCatalogAdminService
         $boundary = $this->decodeJson($data['boundary'] ?? null, 'boundary');
 
         if (! is_array($boundary)) {
-            throw ValidationException::withMessages(['boundary' => ['The boundary must be a JSON object.']]);
+            throw ValidationException::withMessages(['boundary' => ['Ranh giới phải là một đối tượng JSON.']]);
         }
 
         $data['boundary'] = $boundary;
@@ -151,7 +151,7 @@ class PricingCatalogAdminService
         try {
             return json_decode($value, true, flags: JSON_THROW_ON_ERROR);
         } catch (JsonException) {
-            throw ValidationException::withMessages([$field => ['The value must be valid JSON.']]);
+            throw ValidationException::withMessages([$field => ['Giá trị phải là JSON hợp lệ.']]);
         }
     }
 
@@ -164,11 +164,11 @@ class PricingCatalogAdminService
         ];
 
         if (! in_array($key, $allowedKeys, true)) {
-            throw ValidationException::withMessages(['key' => ['This pricing setting is not supported.']]);
+            throw ValidationException::withMessages(['key' => ['Thiết lập giá này không được hỗ trợ.']]);
         }
 
         if (! is_numeric($value)) {
-            throw ValidationException::withMessages(['value' => ['The pricing setting must be numeric JSON.']]);
+            throw ValidationException::withMessages(['value' => ['Thiết lập giá phải là JSON dạng số.']]);
         }
 
         $numericValue = (float) $value;
@@ -179,7 +179,7 @@ class PricingCatalogAdminService
         };
 
         if (! $valid) {
-            throw ValidationException::withMessages(['value' => ['The pricing setting is outside its allowed range.']]);
+            throw ValidationException::withMessages(['value' => ['Thiết lập giá nằm ngoài phạm vi cho phép.']]);
         }
     }
 
@@ -196,7 +196,7 @@ class PricingCatalogAdminService
 
         if (! $valid) {
             throw ValidationException::withMessages([
-                'boundary' => ['Use GeoJSON Polygon/MultiPolygon or Bounds with southwest and northeast.'],
+                'boundary' => ['Hãy dùng GeoJSON Polygon/MultiPolygon hoặc Bounds có điểm tây nam và đông bắc.'],
             ]);
         }
     }

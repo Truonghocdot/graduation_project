@@ -33,13 +33,13 @@ class DriverReviewService
 
             if ($selectedVehicle === null || ! $profile->capabilities()->exists()) {
                 throw ValidationException::withMessages([
-                    'application' => ['The application is missing its selected vehicle or capabilities.'],
+                    'application' => ['Hồ sơ chưa có xe được chọn hoặc năng lực dịch vụ.'],
                 ]);
             }
 
             if ($profile->documents()->whereDate('expires_at', '<', today())->exists()) {
                 throw ValidationException::withMessages([
-                    'application' => ['Expired documents must be replaced before approval.'],
+                    'application' => ['Cần thay thế giấy tờ hết hạn trước khi phê duyệt.'],
                 ]);
             }
 
@@ -128,7 +128,7 @@ class DriverReviewService
         $roleId = Role::query()->where('key', RoleKey::Driver->value)->value('id');
 
         if ($roleId === null) {
-            throw new LogicException('The DRIVER role has not been seeded.');
+            throw new LogicException('Vai trò tài xế chưa được khởi tạo trong hệ thống.');
         }
 
         User::query()->findOrFail($userId)->roles()->syncWithoutDetaching([
@@ -214,7 +214,7 @@ class DriverReviewService
     private function throwInvalidState(): never
     {
         throw ValidationException::withMessages([
-            'application' => ['The driver application cannot be reviewed in its current state.'],
+            'application' => ['Không thể xét duyệt hồ sơ tài xế ở trạng thái hiện tại.'],
         ]);
     }
 }

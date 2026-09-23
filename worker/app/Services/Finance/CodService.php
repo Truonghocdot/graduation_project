@@ -25,7 +25,7 @@ class CodService
 
         if ($delivery->cod_amount > $assignment->driverProfile->cod_limit) {
             throw ValidationException::withMessages([
-                'cod_amount' => ['The COD amount exceeds the driver limit.'],
+                'cod_amount' => ['Số tiền COD vượt quá hạn mức của tài xế.'],
             ]);
         }
 
@@ -80,7 +80,7 @@ class CodService
 
         if (abs($collectedAmount - $delivery->cod_amount) > 0.01) {
             throw ValidationException::withMessages([
-                'cod_collected' => ['Collected COD must match the advanced COD amount.'],
+                'cod_collected' => ['Số tiền COD đã thu phải khớp với số tiền COD đã ứng.'],
             ]);
         }
 
@@ -91,7 +91,7 @@ class CodService
 
         if ($account === null || $account->status !== 'ADVANCED') {
             throw ValidationException::withMessages([
-                'cod_collected' => ['COD must be advanced before it can be collected.'],
+                'cod_collected' => ['Cần ứng tiền COD trước khi có thể thu.'],
             ]);
         }
 

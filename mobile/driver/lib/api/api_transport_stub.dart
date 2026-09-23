@@ -13,6 +13,6 @@ class UnsupportedTransport implements ApiTransport {
     Map<String, dynamic>? body,
     Map<String, String> headers = const {},
   }) {
-    throw UnsupportedError('API transport unavailable.');
+    throw UnsupportedError('Không hỗ trợ kết nối API trên nền tảng này.');
   }
 }

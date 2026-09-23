@@ -25,9 +25,13 @@ class ServiceAreaResource extends Resource
 
     protected static ?string $model = ServiceArea::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pricing';
+    protected static string|UnitEnum|null $navigationGroup = 'Giá cước';
 
-    protected static ?string $navigationLabel = 'Service areas';
+    protected static ?string $navigationLabel = 'Khu vực phục vụ';
+
+    protected static ?string $modelLabel = 'khu vực phục vụ';
+
+    protected static ?string $pluralModelLabel = 'khu vực phục vụ';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMap;
 

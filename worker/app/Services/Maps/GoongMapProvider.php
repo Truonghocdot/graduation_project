@@ -21,7 +21,7 @@ class GoongMapProvider implements MapProvider
         $apiKey = (string) config('services.goong.api_key');
 
         if ($apiKey === '') {
-            throw new MapRouteUnavailableException('Goong API key is not configured.');
+            throw new MapRouteUnavailableException('Chưa cấu hình khóa API Goong.');
         }
 
         $vehicle = $this->providerVehicle($vehicleTypeKey);
@@ -67,7 +67,7 @@ class GoongMapProvider implements MapProvider
 
         if (! $response->successful()) {
             throw new MapRouteUnavailableException(
-                "Goong returned HTTP {$response->status()}.",
+                "Goong trả về lỗi HTTP {$response->status()}.",
             );
         }
 
@@ -76,7 +76,7 @@ class GoongMapProvider implements MapProvider
         $duration = data_get($route, 'legs.0.duration.value');
 
         if (! is_array($route) || ! is_numeric($distance) || ! is_numeric($duration)) {
-            throw new MapRouteUnavailableException('Goong did not return a usable route.');
+            throw new MapRouteUnavailableException('Goong không trả về lộ trình có thể sử dụng.');
         }
 
         return new RouteResult(

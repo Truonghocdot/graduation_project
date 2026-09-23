@@ -12,7 +12,7 @@ class VehicleTypeInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('unique_key')->label('Unique key')->badge(),
+                TextEntry::make('unique_key')->label('Mã duy nhất')->badge(),
                 TextEntry::make('name'),
                 TextEntry::make('passenger_capacity'),
                 TextEntry::make('max_weight_kg')->suffix(' kg'),

@@ -20,7 +20,7 @@ class VehicleTypesTable
         return $table
             ->columns([
                 TextColumn::make('unique_key')
-                    ->label('Key')
+                    ->label('Mã')
                     ->searchable()
                     ->sortable()
                     ->badge(),
@@ -28,18 +28,18 @@ class VehicleTypesTable
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('passenger_capacity')
-                    ->label('Passengers')
+                    ->label('Số hành khách')
                     ->sortable(),
                 TextColumn::make('max_weight_kg')
-                    ->label('Max kg')
+                    ->label('Khối lượng tối đa (kg)')
                     ->numeric(decimalPlaces: 2)
                     ->sortable(),
                 IconColumn::make('is_active')
-                    ->label('Active')
+                    ->label('Đang hoạt động')
                     ->boolean(),
                 TextColumn::make('vehicles_count')
                     ->counts('vehicles')
-                    ->label('Vehicles'),
+                    ->label('Số xe'),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()

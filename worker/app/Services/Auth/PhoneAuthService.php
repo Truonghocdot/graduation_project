@@ -80,7 +80,7 @@ class PhoneAuthService
 
             if ($user->status !== UserStatus::PendingVerification) {
                 throw ValidationException::withMessages([
-                    'phone' => ['The phone number cannot be verified in its current state.'],
+                    'phone' => ['Số điện thoại không thể được xác minh ở trạng thái hiện tại.'],
                 ]);
             }
 
@@ -94,7 +94,7 @@ class PhoneAuthService
                 ->value('id');
 
             if ($customerRoleId === null) {
-                throw new LogicException('The CUSTOMER role has not been seeded.');
+                throw new LogicException('Vai trò khách hàng chưa được khởi tạo trong hệ thống.');
             }
 
             $user->roles()->syncWithoutDetaching([
@@ -118,13 +118,13 @@ class PhoneAuthService
 
         if ($user === null || ! Hash::check($password, $user->password)) {
             throw ValidationException::withMessages([
-                'phone' => ['The provided credentials are invalid.'],
+                'phone' => ['Thông tin đăng nhập không hợp lệ.'],
             ]);
         }
 
         if ($user->status !== UserStatus::Active) {
             throw ValidationException::withMessages([
-                'phone' => ['The account is not active.'],
+                'phone' => ['Tài khoản chưa hoạt động.'],
             ]);
         }
 
@@ -187,7 +187,7 @@ class PhoneAuthService
 
             if ($resetToken === null || $resetToken->expires_at->isPast()) {
                 throw ValidationException::withMessages([
-                    'token' => ['The password reset token is invalid or expired.'],
+                    'token' => ['Mã đặt lại mật khẩu không hợp lệ hoặc đã hết hạn.'],
                 ]);
             }
 
@@ -214,7 +214,7 @@ class PhoneAuthService
             )
         ) {
             throw ValidationException::withMessages([
-                'app_type' => ['This account is not approved for the driver application.'],
+                'app_type' => ['Tài khoản này chưa được phê duyệt để dùng ứng dụng tài xế.'],
             ]);
         }
 

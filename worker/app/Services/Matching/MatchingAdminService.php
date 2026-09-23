@@ -231,7 +231,7 @@ class MatchingAdminService
     private function invalidState(): never
     {
         throw ValidationException::withMessages([
-            'service_request' => ['The service request cannot be changed in its current state.'],
+            'service_request' => ['Không thể thay đổi yêu cầu dịch vụ ở trạng thái hiện tại.'],
         ]);
     }
 }

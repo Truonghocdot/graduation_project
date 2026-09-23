@@ -20,7 +20,7 @@ class UsersTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('User ID')->copyable(),
+                TextColumn::make('public_id')->label('Mã người dùng')->copyable(),
                 TextColumn::make('name')->searchable()->sortable(),
                 TextColumn::make('phone')->searchable(),
                 TextColumn::make('roles.name')->badge(),
@@ -29,7 +29,7 @@ class UsersTable
             ])
             ->filters([
                 SelectFilter::make('status')->options(collect(UserStatus::cases())->mapWithKeys(
-                    fn (UserStatus $status): array => [$status->value => $status->value],
+                    fn (UserStatus $status): array => [$status->value => $status->getLabel()],
                 )->all()),
             ])
             ->recordActions([
@@ -49,7 +49,7 @@ class UsersTable
                         $admin = auth()->user();
                         abort_unless($admin instanceof User, 403);
                         $service->suspendUser($record, $admin, $data['reason_code']);
-                        Notification::make()->title('User suspended')->success()->send();
+                        Notification::make()->title('Đã tạm ngưng người dùng')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

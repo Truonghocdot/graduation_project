@@ -80,7 +80,7 @@ class OfferResponseService
 
         if ($offer->status !== DriverOfferStatus::Pending) {
             throw ValidationException::withMessages([
-                'offer' => ['The offer is no longer pending.'],
+                'offer' => ['Đề nghị không còn ở trạng thái chờ phản hồi.'],
             ]);
         }
 
@@ -118,7 +118,7 @@ class OfferResponseService
 
         if ($offer->status !== DriverOfferStatus::Pending) {
             throw ValidationException::withMessages([
-                'offer' => ['The offer is no longer pending.'],
+                'offer' => ['Đề nghị không còn ở trạng thái chờ phản hồi.'],
             ]);
         }
 
@@ -136,7 +136,7 @@ class OfferResponseService
 
         if ($request->status !== ServiceRequestStatus::SearchingDriver) {
             throw ValidationException::withMessages([
-                'offer' => ['The request already has a winner or is no longer searchable.'],
+                'offer' => ['Yêu cầu đã có tài xế nhận hoặc không còn có thể tìm kiếm.'],
             ]);
         }
 
@@ -145,7 +145,7 @@ class OfferResponseService
             DriverAvailabilityStatus::Offered,
         ], true)) {
             throw ValidationException::withMessages([
-                'offer' => ['The driver is no longer available for this offer.'],
+                'offer' => ['Tài xế không còn sẵn sàng cho đề nghị này.'],
             ]);
         }
 

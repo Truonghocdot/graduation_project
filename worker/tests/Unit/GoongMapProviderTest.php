@@ -63,5 +63,5 @@ test('rejects a Goong response without a usable route', function () {
         new Coordinates(10.773, 106.704),
         new Coordinates(10.780, 106.690),
         'CAR_4_SEAT',
-    ))->toThrow(MapRouteUnavailableException::class, 'usable route');
+    ))->toThrow(MapRouteUnavailableException::class, 'lộ trình có thể sử dụng');
 });

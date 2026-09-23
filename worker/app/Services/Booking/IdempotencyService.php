@@ -36,7 +36,7 @@ class IdempotencyService
 
         if ($record->request_hash !== $requestHash) {
             throw new ConflictHttpException(
-                'This idempotency key was already used with a different request.',
+                'Khóa idempotency này đã được dùng cho một yêu cầu khác.',
             );
         }
 
@@ -45,7 +45,7 @@ class IdempotencyService
         }
 
         throw new ConflictHttpException(
-            'A request with this idempotency key is already in progress.',
+            'Một yêu cầu với khóa idempotency này đang được xử lý.',
         );
     }
 

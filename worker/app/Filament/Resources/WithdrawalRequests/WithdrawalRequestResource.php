@@ -23,9 +23,13 @@ class WithdrawalRequestResource extends Resource
 
     protected static ?string $model = WithdrawalRequest::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Finance';
+    protected static string|UnitEnum|null $navigationGroup = 'Tài chính';
 
-    protected static ?string $navigationLabel = 'Withdrawals';
+    protected static ?string $navigationLabel = 'Yêu cầu rút tiền';
+
+    protected static ?string $modelLabel = 'yêu cầu rút tiền';
+
+    protected static ?string $pluralModelLabel = 'yêu cầu rút tiền';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArrowUpTray;
 

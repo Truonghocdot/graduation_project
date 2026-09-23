@@ -82,7 +82,7 @@ class ServiceRequestService
                 && $data['payer_type'] === PayerType::Recipient->value
                 && $paymentMethod === PaymentMethod::Wallet) {
                 throw ValidationException::withMessages([
-                    'payment_method' => ['Recipient-paid delivery currently supports CASH only.'],
+                    'payment_method' => ['Đơn giao hàng do người nhận thanh toán hiện chỉ hỗ trợ tiền mặt.'],
                 ]);
             }
 
@@ -176,25 +176,25 @@ class ServiceRequestService
     {
         if ($quote->service_type !== $serviceType) {
             throw ValidationException::withMessages([
-                'quote_id' => ['The quote does not match this service.'],
+                'quote_id' => ['Báo giá không khớp với dịch vụ này.'],
             ]);
         }
 
         if ($quote->status !== QuoteStatus::Active) {
             throw ValidationException::withMessages([
-                'quote_id' => ['The quote has already been used or cancelled.'],
+                'quote_id' => ['Báo giá đã được sử dụng hoặc đã bị hủy.'],
             ]);
         }
 
         if ($quote->expires_at->isPast()) {
             throw ValidationException::withMessages([
-                'quote_id' => ['The quote has expired.'],
+                'quote_id' => ['Báo giá đã hết hạn.'],
             ]);
         }
 
         if ($quote->booking_type === BookingType::Scheduled && $quote->scheduled_at?->isPast()) {
             throw ValidationException::withMessages([
-                'quote_id' => ['The scheduled time has passed.'],
+                'quote_id' => ['Thời gian đã đặt đã qua.'],
             ]);
         }
     }
@@ -210,7 +210,7 @@ class ServiceRequestService
 
         if ($payer === null) {
             throw ValidationException::withMessages([
-                'recipient_user_id' => ['The recipient payer does not exist.'],
+                'recipient_user_id' => ['Không tìm thấy người nhận thanh toán.'],
             ]);
         }
 

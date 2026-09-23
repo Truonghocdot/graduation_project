@@ -28,7 +28,7 @@ class VoucherRedemptionService
         if ($voucherSnapshot === null) {
             if ($quote->voucher_discount > 0) {
                 throw ValidationException::withMessages([
-                    'voucher_code' => ['The quote voucher snapshot is invalid.'],
+                    'voucher_code' => ['Dữ liệu mã giảm giá trong báo giá không hợp lệ.'],
                 ]);
             }
 
@@ -43,25 +43,25 @@ class VoucherRedemptionService
 
         if ($voucher === null || ! $voucher->is_active || $voucher->starts_at->isFuture() || $voucher->ends_at->isPast()) {
             throw ValidationException::withMessages([
-                'voucher_code' => ['The voucher is invalid or expired.'],
+                'voucher_code' => ['Mã giảm giá không hợp lệ hoặc đã hết hạn.'],
             ]);
         }
 
         if ($voucher->service_scope !== null && $voucher->service_scope !== $quote->service_type) {
             throw ValidationException::withMessages([
-                'voucher_code' => ['The voucher does not apply to this service.'],
+                'voucher_code' => ['Mã giảm giá không áp dụng cho dịch vụ này.'],
             ]);
         }
 
         if ($quote->gross_fare < $voucher->minimum_order_amount) {
             throw ValidationException::withMessages([
-                'voucher_code' => ['The quote no longer meets the voucher minimum amount.'],
+                'voucher_code' => ['Báo giá không còn đáp ứng giá trị đơn hàng tối thiểu của mã giảm giá.'],
             ]);
         }
 
         if ($voucher->total_usage_limit !== null && $voucher->used_count >= $voucher->total_usage_limit) {
             throw ValidationException::withMessages([
-                'voucher_code' => ['The voucher usage limit has been reached.'],
+                'voucher_code' => ['Mã giảm giá đã đạt giới hạn sử dụng.'],
             ]);
         }
 
@@ -74,7 +74,7 @@ class VoucherRedemptionService
 
             if ($usageCount >= $voucher->per_user_usage_limit) {
                 throw ValidationException::withMessages([
-                    'voucher_code' => ['You have reached the voucher usage limit.'],
+                    'voucher_code' => ['Bạn đã đạt giới hạn sử dụng mã giảm giá.'],
                 ]);
             }
         }
@@ -92,7 +92,7 @@ class VoucherRedemptionService
 
         if (abs($discount - $quote->voucher_discount) > 0.01) {
             throw ValidationException::withMessages([
-                'voucher_code' => ['The quote voucher amount is no longer valid.'],
+                'voucher_code' => ['Giá trị giảm giá trong báo giá không còn hợp lệ.'],
             ]);
         }
 

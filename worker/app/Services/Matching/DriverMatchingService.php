@@ -39,7 +39,7 @@ class DriverMatchingService
 
             if ($pickup === null) {
                 throw ValidationException::withMessages([
-                    'matching' => ['A pickup stop is required before matching.'],
+                    'matching' => ['Cần có điểm lấy hàng trước khi tìm tài xế.'],
                 ]);
             }
 

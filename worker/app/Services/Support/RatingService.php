@@ -28,7 +28,7 @@ class RatingService
 
             if ($request->status !== ServiceRequestStatus::Completed) {
                 throw ValidationException::withMessages([
-                    'rating' => ['Only completed services can be rated.'],
+                    'rating' => ['Chỉ có thể đánh giá dịch vụ đã hoàn thành.'],
                 ]);
             }
 
@@ -55,7 +55,7 @@ class RatingService
                 ->where('direction', $direction)
                 ->exists()) {
                 throw ValidationException::withMessages([
-                    'rating' => ['This service has already been rated in this direction.'],
+                    'rating' => ['Dịch vụ này đã được đánh giá theo chiều này.'],
                 ]);
             }
 

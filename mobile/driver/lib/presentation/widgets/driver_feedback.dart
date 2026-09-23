@@ -1,5 +1,59 @@
 import 'package:flutter/material.dart';
 
+String formatDriverValue(String value) {
+  return switch (value) {
+    'DELIVERY' => 'Giao hàng',
+    'DRIVE' => 'Đặt xe',
+    'WALLET' => 'Ví',
+    'CASH' => 'Tiền mặt',
+    'DRAFT' => 'Bản nháp',
+    'PENDING_REVIEW' => 'Chờ xét duyệt',
+    'APPROVED' => 'Đã phê duyệt',
+    'REJECTED' => 'Đã từ chối',
+    'SUSPENDED' => 'Tạm ngưng',
+    'OFFLINE' => 'Ngoại tuyến',
+    'ONLINE' => 'Trực tuyến',
+    'OFFERED' => 'Đang nhận đề nghị',
+    'BUSY' => 'Đang bận',
+    'PENDING' => 'Chờ xử lý',
+    'VERIFIED' => 'Đã xác minh',
+    'ACCEPTED' => 'Đã nhận',
+    'DECLINED' => 'Đã từ chối',
+    'EXPIRED' => 'Đã hết hạn',
+    'CANCELLED' => 'Đã hủy',
+    'SCHEDULED' => 'Đã đặt lịch',
+    'SEARCHING_DRIVER' => 'Đang tìm tài xế',
+    'ASSIGNED' => 'Đã phân công tài xế',
+    'DRIVER_ARRIVING_PICKUP' => 'Đang đến điểm lấy hàng',
+    'AT_PICKUP' => 'Đã đến điểm lấy hàng',
+    'PICKED_UP' => 'Đã lấy hàng',
+    'IN_DELIVERY' => 'Đang giao hàng',
+    'DELIVERED' => 'Đã giao hàng',
+    'DELIVERY_FAILED' => 'Giao hàng thất bại',
+    'RETURNING' => 'Đang hoàn hàng',
+    'RETURNED' => 'Đã hoàn hàng',
+    'DRIVER_ARRIVING' => 'Đang đến điểm đón',
+    'DRIVER_ARRIVED' => 'Đã đến điểm đón',
+    'IN_TRIP' => 'Đang trong chuyến đi',
+    'TRIP_ENDED' => 'Đã kết thúc chuyến đi',
+    'IN_PROGRESS' => 'Đang thực hiện',
+    'COMPLETED' => 'Đã hoàn thành',
+    'IDENTITY' => 'Căn cước công dân',
+    'DRIVER_LICENSE' => 'Giấy phép lái xe',
+    'VEHICLE_REGISTRATION' => 'Đăng ký xe',
+    'INSURANCE' => 'Bảo hiểm',
+    'PORTRAIT' => 'Ảnh chân dung',
+    'VEHICLE_PHOTO' => 'Ảnh xe',
+    'OPEN' => 'Đang mở',
+    'IN_REVIEW' => 'Đang xử lý',
+    'WAITING_FOR_CUSTOMER' => 'Chờ khách hàng phản hồi',
+    'RESOLVED' => 'Đã xử lý',
+    'REOPENED' => 'Đã mở lại',
+    'CLOSED' => 'Đã đóng',
+    _ => value,
+  };
+}
+
 class DriverErrorBanner extends StatelessWidget {
   const DriverErrorBanner({super.key, required this.message});
   final String message;
@@ -63,7 +117,7 @@ class DriverStatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        status,
+        formatDriverValue(status),
         style: const TextStyle(
           color: Color(0xFF215F9A),
           fontSize: 11,

@@ -35,9 +35,13 @@ class DriverProfilePage extends StatelessWidget {
                         'Đối tác tài xế',
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      Text(profile?.reviewStatus ?? 'Không có hồ sơ'),
                       Text(
-                        'Trạng thái ${profile?.availabilityStatus ?? 'OFFLINE'}',
+                        profile == null
+                            ? 'Không có hồ sơ'
+                            : formatDriverValue(profile.reviewStatus),
+                      ),
+                      Text(
+                        'Trạng thái ${formatDriverValue(profile?.availabilityStatus ?? 'OFFLINE')}',
                       ),
                     ],
                   ),
@@ -66,7 +70,7 @@ class DriverProfilePage extends StatelessWidget {
                     runSpacing: 8,
                     children: [
                       for (final capability in profile!.capabilities)
-                        Chip(label: Text(capability)),
+                        Chip(label: Text(formatDriverValue(capability))),
                     ],
                   ),
                 const SizedBox(height: 12),
@@ -161,7 +165,7 @@ class DriverProfilePage extends StatelessWidget {
                     ? Icons.notifications_none
                     : Icons.notifications_active_outlined,
               ),
-              title: Text(item.type),
+              title: Text(formatDriverValue(item.type)),
               trailing: item.isRead
                   ? null
                   : IconButton(
@@ -193,7 +197,7 @@ class DriverProfilePage extends StatelessWidget {
           for (final ticket in controller.tickets)
             ListTile(
               title: Text(ticket.subject),
-              subtitle: Text(ticket.status),
+              subtitle: Text(formatDriverValue(ticket.status)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _ticketDetail(context, ticket.id),
             ),

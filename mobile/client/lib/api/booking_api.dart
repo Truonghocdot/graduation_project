@@ -288,7 +288,7 @@ class SupportChatMessage {
   factory SupportChatMessage.fromJson(Map<String, dynamic> json) {
     final sender = json['sender'] as Map<String, dynamic>?;
     return SupportChatMessage(
-      senderName: sender?['name']?.toString() ?? 'User',
+      senderName: sender?['name']?.toString() ?? 'Người dùng',
       body: json['body']?.toString() ?? '',
     );
   }
@@ -586,7 +586,7 @@ class BookingApi
     });
     final token = response.body['reset_token'];
     if (token is! String) {
-      throw const BookingApiException('Invalid reset token.');
+      throw const BookingApiException('Mã đặt lại mật khẩu không hợp lệ.');
     }
     return token;
   }
@@ -988,7 +988,7 @@ class BookingApi
 
     final data = response.body['data'];
     if (data is! List) {
-      throw const BookingApiException('Invalid server response.');
+      throw const BookingApiException('Phản hồi từ máy chủ không hợp lệ.');
     }
 
     return data.whereType<Map<String, dynamic>>().toList(growable: false);

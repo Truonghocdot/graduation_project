@@ -198,10 +198,7 @@ class GoongLocationApi {
         ? const <String, dynamic>{}
         : jsonDecode(response.body);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw GoongApiException(
-        'Goong trả về lỗi ${response.statusCode}: '
-        '${decoded is Map<String, dynamic> ? decoded['status'] ?? 'request failed' : 'request failed'}',
-      );
+      throw GoongApiException('Goong trả về lỗi ${response.statusCode}.');
     }
     if (decoded is! Map<String, dynamic>) {
       throw const GoongApiException('Phản hồi Goong không hợp lệ.');

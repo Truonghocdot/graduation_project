@@ -20,7 +20,7 @@ class SystemSettingsTable
                     ->formatStateUsing(fn (mixed $state): string => json_encode($state) ?: 'null')
                     ->limit(50),
                 IconColumn::make('is_public')->boolean(),
-                TextColumn::make('updatedBy.name')->label('Updated by'),
+                TextColumn::make('updatedBy.name')->label('Người cập nhật'),
                 TextColumn::make('updated_at')->dateTime()->sortable(),
             ])
             ->recordActions([

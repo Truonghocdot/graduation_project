@@ -2,7 +2,9 @@
 
 namespace App\Enums;
 
-enum DriverDocumentType: string
+use Filament\Support\Contracts\HasLabel;
+
+enum DriverDocumentType: string implements HasLabel
 {
     case Identity = 'IDENTITY';
     case DriverLicense = 'DRIVER_LICENSE';
@@ -10,6 +12,18 @@ enum DriverDocumentType: string
     case Insurance = 'INSURANCE';
     case Portrait = 'PORTRAIT';
     case VehiclePhoto = 'VEHICLE_PHOTO';
+
+    public function getLabel(): string
+    {
+        return match ($this) {
+            self::Identity => 'Căn cước công dân',
+            self::DriverLicense => 'Giấy phép lái xe',
+            self::VehicleRegistration => 'Đăng ký xe',
+            self::Insurance => 'Bảo hiểm',
+            self::Portrait => 'Ảnh chân dung',
+            self::VehiclePhoto => 'Ảnh xe',
+        };
+    }
 
     public function belongsToVehicle(): bool
     {

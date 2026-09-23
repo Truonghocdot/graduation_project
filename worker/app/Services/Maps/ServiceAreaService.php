@@ -32,7 +32,7 @@ class ServiceAreaService
 
         if ($area === null) {
             throw ValidationException::withMessages([
-                'service_area' => ['Pickup and dropoff must be inside the same active service area.'],
+                'service_area' => ['Điểm lấy hàng và điểm đến phải nằm trong cùng một khu vực hoạt động.'],
             ]);
         }
 

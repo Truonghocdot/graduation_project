@@ -234,7 +234,7 @@ class ServiceExecutionService
 
         if (! isset($definitions[$action])) {
             throw ValidationException::withMessages([
-                'action' => ['The action is not valid for this service type.'],
+                'action' => ['Thao tác không hợp lệ với loại dịch vụ này.'],
             ]);
         }
 
@@ -263,7 +263,7 @@ class ServiceExecutionService
 
         if ($evidence === null || ($requiredType !== null && $evidence->evidence_type !== $requiredType)) {
             throw ValidationException::withMessages([
-                'evidence_id' => ["Evidence type {$requiredType?->value} is required."],
+                'evidence_id' => ["Cần có bằng chứng loại {$requiredType?->getLabel()}."],
             ]);
         }
 
@@ -311,7 +311,7 @@ class ServiceExecutionService
         if ($distance > (float) config('execution.geofence_radius_meters', 300)
             && (! is_string($reason) || trim($reason) === '')) {
             throw ValidationException::withMessages([
-                'out_of_geofence_reason' => ['A reason is required outside the stop geofence.'],
+                'out_of_geofence_reason' => ['Cần nêu lý do khi thao tác ngoài phạm vi điểm dừng.'],
             ]);
         }
 
@@ -332,7 +332,7 @@ class ServiceExecutionService
         if ($payment->method === PaymentMethod::Cash) {
             if (! isset($data['cash_collected'])) {
                 throw ValidationException::withMessages([
-                    'cash_collected' => ['Collected cash is required for CASH payment.'],
+                    'cash_collected' => ['Cần nhập số tiền mặt đã thu cho phương thức thanh toán tiền mặt.'],
                 ]);
             }
             $payment->forceFill([

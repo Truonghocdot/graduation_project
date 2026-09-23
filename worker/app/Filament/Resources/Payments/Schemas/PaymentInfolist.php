@@ -11,7 +11,7 @@ class PaymentInfolist
     {
         return $schema->components([
             TextEntry::make('public_id')->copyable(),
-            TextEntry::make('serviceRequest.public_id')->label('Request ID')->copyable(),
+            TextEntry::make('serviceRequest.public_id')->label('Mã yêu cầu')->copyable(),
             TextEntry::make('payer.name'),
             TextEntry::make('payer_type')->badge(),
             TextEntry::make('method')->badge(),
@@ -20,7 +20,7 @@ class PaymentInfolist
             TextEntry::make('voucher_discount')->money('VND'),
             TextEntry::make('customer_payable')->money('VND'),
             TextEntry::make('cash_collected')->money('VND'),
-            TextEntry::make('settlement.public_id')->label('Settlement ID')->copyable(),
+            TextEntry::make('settlement.public_id')->label('Mã quyết toán')->copyable(),
         ])->columns(2);
     }
 }

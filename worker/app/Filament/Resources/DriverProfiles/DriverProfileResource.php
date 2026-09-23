@@ -28,9 +28,13 @@ class DriverProfileResource extends Resource
 
     protected static ?string $model = DriverProfile::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Driver Operations';
+    protected static string|UnitEnum|null $navigationGroup = 'Vận hành tài xế';
 
-    protected static ?string $navigationLabel = 'Driver applications';
+    protected static ?string $navigationLabel = 'Hồ sơ đăng ký tài xế';
+
+    protected static ?string $modelLabel = 'hồ sơ tài xế';
+
+    protected static ?string $pluralModelLabel = 'hồ sơ tài xế';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 

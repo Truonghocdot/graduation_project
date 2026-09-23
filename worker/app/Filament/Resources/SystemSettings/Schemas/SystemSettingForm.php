@@ -14,14 +14,14 @@ class SystemSettingForm
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Tabs::make('Configuration')
+            Tabs::make('Cấu hình')
                 ->tabs([
-                    Tab::make('Pricing')->components([
+                    Tab::make('Giá cước')->components([
                         Select::make('key')
                             ->options([
-                                'pricing.quote_ttl_seconds' => 'Quote TTL (seconds)',
-                                'pricing.rounding_unit' => 'VND rounding unit',
-                                'pricing.float_tolerance' => 'Float tolerance',
+                                'pricing.quote_ttl_seconds' => 'Thời hạn báo giá (giây)',
+                                'pricing.rounding_unit' => 'Đơn vị làm tròn VND',
+                                'pricing.float_tolerance' => 'Sai số số thực',
                             ])
                             ->required()
                             ->unique(ignoreRecord: true)

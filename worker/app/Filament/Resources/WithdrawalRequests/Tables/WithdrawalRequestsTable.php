@@ -20,20 +20,20 @@ class WithdrawalRequestsTable
         return $table
             ->defaultSort('requested_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('Withdrawal ID')->copyable(),
-                TextColumn::make('wallet.user.name')->label('Driver')->searchable(),
-                TextColumn::make('bankAccount.bank_code')->label('Bank'),
-                TextColumn::make('bankAccount.account_name')->label('Account name'),
+                TextColumn::make('public_id')->label('Mã yêu cầu rút')->copyable(),
+                TextColumn::make('wallet.user.name')->label('Tài xế')->searchable(),
+                TextColumn::make('bankAccount.bank_code')->label('Ngân hàng'),
+                TextColumn::make('bankAccount.account_name')->label('Tên chủ tài khoản'),
                 TextColumn::make('amount')->money('VND')->sortable(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('requested_at')->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')->options([
-                    'PENDING' => 'PENDING',
-                    'COMPLETED' => 'COMPLETED',
-                    'REJECTED' => 'REJECTED',
-                    'FAILED' => 'FAILED',
+                    'PENDING' => 'Chờ xử lý',
+                    'COMPLETED' => 'Đã hoàn tất',
+                    'REJECTED' => 'Đã từ chối',
+                    'FAILED' => 'Thất bại',
                 ]),
             ])
             ->recordActions([
@@ -58,7 +58,7 @@ class WithdrawalRequestsTable
                             self::admin(),
                             $data['bank_transfer_reference'],
                         );
-                        Notification::make()->title('Withdrawal completed')->success()->send();
+                        Notification::make()->title('Đã hoàn tất yêu cầu rút tiền')->success()->send();
                     }),
                 Action::make('reject')
                     ->color('danger')
@@ -77,7 +77,7 @@ class WithdrawalRequestsTable
                         WithdrawalService $service,
                     ): void {
                         $service->reject($record, self::admin(), $data['reason_code']);
-                        Notification::make()->title('Withdrawal rejected')->success()->send();
+                        Notification::make()->title('Đã từ chối yêu cầu rút tiền')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

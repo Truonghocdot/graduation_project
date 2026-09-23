@@ -23,7 +23,11 @@ class SettlementResource extends Resource
 
     protected static ?string $model = Settlement::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Finance';
+    protected static string|UnitEnum|null $navigationGroup = 'Tài chính';
+
+    protected static ?string $modelLabel = 'quyết toán';
+
+    protected static ?string $pluralModelLabel = 'quyết toán';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 

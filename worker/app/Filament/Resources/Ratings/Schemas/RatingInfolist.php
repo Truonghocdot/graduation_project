@@ -10,7 +10,7 @@ class RatingInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            TextEntry::make('serviceRequest.public_id')->label('Request ID')->copyable(),
+            TextEntry::make('serviceRequest.public_id')->label('Mã yêu cầu')->copyable(),
             TextEntry::make('direction')->badge(),
             TextEntry::make('reviewer.name'),
             TextEntry::make('reviewee.name'),

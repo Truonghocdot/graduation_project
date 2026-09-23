@@ -34,7 +34,7 @@ class WalletPaymentService
 
         if ($wallet === null) {
             throw ValidationException::withMessages([
-                'payment_method' => ['The payer does not have an active wallet.'],
+                'payment_method' => ['Người thanh toán chưa có ví đang hoạt động.'],
             ]);
         }
 
@@ -42,7 +42,7 @@ class WalletPaymentService
 
         if ($availableBalance < $amount) {
             throw ValidationException::withMessages([
-                'payment_method' => ['The payer wallet does not have enough available balance.'],
+                'payment_method' => ['Số dư khả dụng trong ví của người thanh toán không đủ.'],
             ]);
         }
 

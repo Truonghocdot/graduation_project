@@ -22,7 +22,11 @@ class SupportTicketResource extends Resource
 {
     protected static ?string $model = SupportTicket::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Support';
+    protected static string|UnitEnum|null $navigationGroup = 'Hỗ trợ';
+
+    protected static ?string $modelLabel = 'yêu cầu hỗ trợ';
+
+    protected static ?string $pluralModelLabel = 'yêu cầu hỗ trợ';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTicket;
 

@@ -17,7 +17,7 @@ class ServiceAreaForm
             TextInput::make('name')->required()->maxLength(120),
             Select::make('service_type')
                 ->options(collect(ServiceType::cases())->mapWithKeys(
-                    fn (ServiceType $serviceType): array => [$serviceType->value => $serviceType->value],
+                    fn (ServiceType $serviceType): array => [$serviceType->value => $serviceType->getLabel()],
                 )->all())
                 ->nullable(),
             Toggle::make('is_active')->default(true),

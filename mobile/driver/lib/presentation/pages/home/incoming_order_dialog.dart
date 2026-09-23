@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
+import '../../widgets/driver_feedback.dart';
 
 class IncomingOrderDialog extends StatefulWidget {
   const IncomingOrderDialog({
@@ -62,7 +63,7 @@ class _IncomingOrderDialogState extends State<IncomingOrderDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            offer.serviceType,
+            formatDriverValue(offer.serviceType),
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 8),
@@ -72,7 +73,7 @@ class _IncomingOrderDialogState extends State<IncomingOrderDialog> {
           Text(
             'Thu nhập dự kiến ${offer.estimatedEarning.toStringAsFixed(0)} VND',
           ),
-          Text('Khách thanh toán ${offer.paymentMethod}'),
+          Text('Khách thanh toán ${formatDriverValue(offer.paymentMethod)}'),
         ],
       ),
       actions: [

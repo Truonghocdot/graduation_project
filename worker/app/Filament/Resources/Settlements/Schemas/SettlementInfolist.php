@@ -12,8 +12,8 @@ class SettlementInfolist
         return $schema->components([
             TextEntry::make('public_id')->copyable(),
             TextEntry::make('status')->badge(),
-            TextEntry::make('payment.serviceRequest.public_id')->label('Request ID')->copyable(),
-            TextEntry::make('driverProfile.user.name')->label('Driver'),
+            TextEntry::make('payment.serviceRequest.public_id')->label('Mã yêu cầu')->copyable(),
+            TextEntry::make('driverProfile.user.name')->label('Tài xế'),
             TextEntry::make('driver_rate')->numeric(decimalPlaces: 2),
             TextEntry::make('driver_gross_earning')->money('VND'),
             TextEntry::make('cash_collected')->money('VND'),

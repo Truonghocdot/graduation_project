@@ -12,18 +12,18 @@ class WalletInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
-            Section::make('Wallet')->schema([
-                TextEntry::make('public_id')->label('Wallet ID')->copyable(),
-                TextEntry::make('user.name')->label('Owner'),
-                TextEntry::make('user.phone')->label('Phone'),
+            Section::make('Ví')->schema([
+                TextEntry::make('public_id')->label('Mã ví')->copyable(),
+                TextEntry::make('user.name')->label('Chủ ví'),
+                TextEntry::make('user.phone')->label('Số điện thoại'),
                 TextEntry::make('balance')->money('VND'),
                 TextEntry::make('reserved_withdrawal_amount')->money('VND'),
                 TextEntry::make('status')->badge(),
             ])->columns(2),
-            Section::make('Ledger entries')->schema([
+            Section::make('Bút toán sổ cái')->schema([
                 RepeatableEntry::make('ledgerAccount.entries')
                     ->schema([
-                        TextEntry::make('transaction.transaction_type')->label('Type'),
+                        TextEntry::make('transaction.transaction_type')->label('Loại'),
                         TextEntry::make('direction')->badge(),
                         TextEntry::make('amount')->money('VND'),
                         TextEntry::make('balance_after')->money('VND'),

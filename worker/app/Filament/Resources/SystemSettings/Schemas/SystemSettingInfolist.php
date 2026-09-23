@@ -18,7 +18,7 @@ class SystemSettingInfolist
                     $state,
                     JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
                 ) ?: 'null'),
-            TextEntry::make('updatedBy.name')->label('Updated by')->placeholder('System'),
+            TextEntry::make('updatedBy.name')->label('Người cập nhật')->placeholder('Hệ thống'),
             TextEntry::make('updated_at')->dateTime(),
         ])->columns(2);
     }

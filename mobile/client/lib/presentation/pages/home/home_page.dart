@@ -60,7 +60,7 @@ class HomePage extends StatelessWidget {
                 contentPadding: const EdgeInsets.all(14),
                 leading: const Icon(Icons.near_me_outlined),
                 title: const Text('Dịch vụ đang theo dõi'),
-                subtitle: Text(request.status),
+                subtitle: Text(formatClientValue(request.status)),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => Navigator.push(
                   context,

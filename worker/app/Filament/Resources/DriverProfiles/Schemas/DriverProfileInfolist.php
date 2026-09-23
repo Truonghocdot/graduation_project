@@ -12,29 +12,29 @@ class DriverProfileInfolist
     {
         return $schema
             ->components([
-                TextEntry::make('public_id')->label('ID')->copyable(),
-                TextEntry::make('user.name')->label('User'),
-                TextEntry::make('user.phone')->label('Phone'),
+                TextEntry::make('public_id')->label('Mã')->copyable(),
+                TextEntry::make('user.name')->label('Người dùng'),
+                TextEntry::make('user.phone')->label('Số điện thoại'),
                 TextEntry::make('review_status')->badge(),
                 TextEntry::make('availability_status')->badge(),
-                TextEntry::make('review_reason_code')->label('Review reason')->placeholder('None'),
+                TextEntry::make('review_reason_code')->label('Lý do xét duyệt')->placeholder('Không có'),
                 TextEntry::make('cod_limit')->numeric(decimalPlaces: 0)->suffix(' VND'),
                 TextEntry::make('submitted_at')->dateTime(),
                 TextEntry::make('reviewed_at')->dateTime(),
                 RepeatableEntry::make('vehicles')
-                    ->label('Vehicles')
+                    ->label('Xe')
                     ->schema([
-                        TextEntry::make('vehicleType.name')->label('Type'),
-                        TextEntry::make('plate_number')->label('Plate'),
+                        TextEntry::make('vehicleType.name')->label('Loại xe'),
+                        TextEntry::make('plate_number')->label('Biển số'),
                         TextEntry::make('status')->badge(),
-                        TextEntry::make('is_selected')->label('Selected'),
+                        TextEntry::make('is_selected')->label('Được chọn'),
                     ])
                     ->columns(4),
                 RepeatableEntry::make('documents')
-                    ->label('Documents')
+                    ->label('Giấy tờ')
                     ->schema([
-                        TextEntry::make('document_type')->label('Type')->badge(),
-                        TextEntry::make('document_number')->label('Number'),
+                        TextEntry::make('document_type')->label('Loại giấy tờ')->badge(),
+                        TextEntry::make('document_number')->label('Số giấy tờ'),
                         TextEntry::make('status')->badge(),
                         TextEntry::make('expires_at')->date(),
                     ])

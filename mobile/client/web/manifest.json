@@ -1,11 +1,11 @@
 {
-    "name": "client",
-    "short_name": "client",
+    "name": "Khách hàng",
+    "short_name": "Khách hàng",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#146B52",
     "theme_color": "#146B52",
-    "description": "A new Flutter project.",
+    "description": "Ứng dụng giao hàng và đặt xe.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

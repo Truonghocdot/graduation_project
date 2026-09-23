@@ -31,7 +31,7 @@ void main() {
     await tester.tap(find.byKey(const Key('driver-login-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('DELIVERY'), findsWidgets);
+    expect(find.text('Giao hàng'), findsWidgets);
     expect(find.text('Đề nghị mới'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('accept-offer-1')));

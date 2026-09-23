@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../api/booking_api.dart';
 import '../api/booking_realtime.dart';
@@ -69,7 +70,10 @@ class _BookingAppState extends State<BookingApp> {
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Delivery & Drive',
+      title: 'Giao hàng & Đặt xe',
+      locale: const Locale('vi', 'VN'),
+      supportedLocales: const [Locale('vi', 'VN')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: ThemeData(
         colorScheme: colors,
         scaffoldBackgroundColor: colors.surface,

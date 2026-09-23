@@ -64,7 +64,7 @@ class ChatService
             if (! $message->wasRecentlyCreated) {
                 if ($message->sender_user_id !== $user->id || $message->body !== $body) {
                     throw ValidationException::withMessages([
-                        'client_message_id' => ['The client message ID was reused with different content.'],
+                        'client_message_id' => ['Mã tin nhắn phía ứng dụng đã được dùng lại với nội dung khác.'],
                     ]);
                 }
 
@@ -130,7 +130,7 @@ class ChatService
 
         if ($assignment === null) {
             throw ValidationException::withMessages([
-                'chat' => ['Chat is available only while an assignment is active.'],
+                'chat' => ['Chỉ có thể trò chuyện khi chuyến được phân công đang hoạt động.'],
             ]);
         }
 

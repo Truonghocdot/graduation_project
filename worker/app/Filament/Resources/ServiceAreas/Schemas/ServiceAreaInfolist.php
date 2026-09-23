@@ -12,7 +12,7 @@ class ServiceAreaInfolist
     {
         return $schema->components([
             TextEntry::make('name'),
-            TextEntry::make('service_type')->badge()->placeholder('ALL'),
+            TextEntry::make('service_type')->badge()->placeholder('Tất cả'),
             IconEntry::make('is_active')->boolean(),
             TextEntry::make('updated_at')->dateTime(),
             TextEntry::make('boundary')

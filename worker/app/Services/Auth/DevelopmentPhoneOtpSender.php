@@ -14,7 +14,7 @@ class DevelopmentPhoneOtpSender implements PhoneOtpSender
         PhoneVerificationPurpose $purpose,
     ): void {
         if (! app()->environment(['local', 'testing']) || config('otp.test_code') === null) {
-            throw new LogicException('A production phone OTP sender has not been configured.');
+            throw new LogicException('Chưa cấu hình dịch vụ gửi OTP qua điện thoại cho môi trường thực tế.');
         }
 
         // The configured test code is known by the local client; never write it to logs.

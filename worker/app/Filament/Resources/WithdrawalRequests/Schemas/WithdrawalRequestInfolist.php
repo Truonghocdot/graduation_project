@@ -11,10 +11,10 @@ class WithdrawalRequestInfolist
     {
         return $schema->components([
             TextEntry::make('public_id')->copyable(),
-            TextEntry::make('wallet.user.name')->label('Driver'),
-            TextEntry::make('wallet.user.phone')->label('Phone'),
-            TextEntry::make('bankAccount.bank_code')->label('Bank'),
-            TextEntry::make('bankAccount.account_name')->label('Account name'),
+            TextEntry::make('wallet.user.name')->label('Tài xế'),
+            TextEntry::make('wallet.user.phone')->label('Số điện thoại'),
+            TextEntry::make('bankAccount.bank_code')->label('Ngân hàng'),
+            TextEntry::make('bankAccount.account_name')->label('Tên chủ tài khoản'),
             TextEntry::make('amount')->money('VND'),
             TextEntry::make('status')->badge(),
             TextEntry::make('requested_at')->dateTime(),

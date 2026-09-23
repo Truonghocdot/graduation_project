@@ -18,15 +18,14 @@ class ServiceAreasTable
             ->defaultSort('name')
             ->columns([
                 TextColumn::make('name')->searchable()->sortable(),
-                TextColumn::make('service_type')->badge()->placeholder('ALL')->sortable(),
+                TextColumn::make('service_type')->badge()->placeholder('Tất cả')->sortable(),
                 IconColumn::make('is_active')->boolean()->sortable(),
                 TextColumn::make('updated_at')->dateTime()->sortable(),
             ])
             ->filters([
-                SelectFilter::make('service_type')
-                    ->options(collect(ServiceType::cases())->mapWithKeys(
-                        fn (ServiceType $serviceType): array => [$serviceType->value => $serviceType->value],
-                    )->all()),
+                SelectFilter::make('service_type')->options(collect(ServiceType::cases())->mapWithKeys(
+                    fn (ServiceType $serviceType): array => [$serviceType->value => $serviceType->getLabel()],
+                )->all()),
             ])
             ->recordActions([
                 ViewAction::make(),

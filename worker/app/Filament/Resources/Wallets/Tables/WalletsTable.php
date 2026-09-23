@@ -14,19 +14,19 @@ class WalletsTable
         return $table
             ->defaultSort('updated_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('Wallet ID')->copyable(),
-                TextColumn::make('user.name')->label('Owner')->searchable(),
-                TextColumn::make('user.phone')->label('Phone')->searchable(),
+                TextColumn::make('public_id')->label('Mã ví')->copyable(),
+                TextColumn::make('user.name')->label('Chủ ví')->searchable(),
+                TextColumn::make('user.phone')->label('Số điện thoại')->searchable(),
                 TextColumn::make('balance')->money('VND')->sortable(),
-                TextColumn::make('reserved_withdrawal_amount')->label('Reserved')->money('VND'),
+                TextColumn::make('reserved_withdrawal_amount')->label('Đã giữ để rút')->money('VND'),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('updated_at')->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')->options([
-                    'ACTIVE' => 'ACTIVE',
-                    'FROZEN' => 'FROZEN',
-                    'CLOSED' => 'CLOSED',
+                    'ACTIVE' => 'Đang hoạt động',
+                    'FROZEN' => 'Đã khóa',
+                    'CLOSED' => 'Đã đóng',
                 ]),
             ])
             ->recordActions([ViewAction::make()])

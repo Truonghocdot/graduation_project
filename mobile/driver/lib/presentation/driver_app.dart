@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 import '../api/device_location.dart';
 import '../api/driver_api.dart';
@@ -59,7 +60,10 @@ class _DriverAppState extends State<DriverApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Driver',
+      title: 'Ứng dụng tài xế',
+      locale: const Locale('vi', 'VN'),
+      supportedLocales: const [Locale('vi', 'VN')],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       theme: ThemeData(
         colorScheme: const ColorScheme.light(
           primary: Color(0xFF215F9A),

@@ -22,11 +22,11 @@ class DriverProfilesTable
         return $table
             ->columns([
                 TextColumn::make('user.name')
-                    ->label('Driver')
+                    ->label('Tài xế')
                     ->searchable()
                     ->sortable(),
                 TextColumn::make('user.phone')
-                    ->label('Phone')
+                    ->label('Số điện thoại')
                     ->searchable(),
                 TextColumn::make('review_status')
                     ->badge()
@@ -36,37 +36,35 @@ class DriverProfilesTable
                     ->sortable(),
                 TextColumn::make('vehicles_count')
                     ->counts('vehicles')
-                    ->label('Vehicles'),
+                    ->label('Xe'),
                 TextColumn::make('documents_count')
                     ->counts('documents')
-                    ->label('Documents'),
+                    ->label('Giấy tờ'),
                 TextColumn::make('submitted_at')
                     ->dateTime()
                     ->sortable(),
             ])
             ->filters([
-                SelectFilter::make('review_status')
-                    ->options(collect(DriverReviewStatus::cases())->mapWithKeys(
-                        fn (DriverReviewStatus $status): array => [$status->value => $status->value],
-                    )->all()),
-                SelectFilter::make('availability_status')
-                    ->options(collect(DriverAvailabilityStatus::cases())->mapWithKeys(
-                        fn (DriverAvailabilityStatus $status): array => [$status->value => $status->value],
-                    )->all()),
+                SelectFilter::make('review_status')->options(collect(DriverReviewStatus::cases())->mapWithKeys(
+                    fn (DriverReviewStatus $status): array => [$status->value => $status->getLabel()],
+                )->all()),
+                SelectFilter::make('availability_status')->options(collect(DriverAvailabilityStatus::cases())->mapWithKeys(
+                    fn (DriverAvailabilityStatus $status): array => [$status->value => $status->getLabel()],
+                )->all()),
             ])
             ->recordActions([
                 ViewAction::make(),
                 Action::make('approve')
-                    ->label('Approve')
+                    ->label('Phê duyệt')
                     ->color('success')
                     ->requiresConfirmation()
                     ->visible(fn (DriverProfile $record): bool => $record->review_status === DriverReviewStatus::PendingReview)
                     ->action(function (DriverProfile $record, DriverReviewService $review): void {
                         $review->approve($record, self::admin());
-                        Notification::make()->title('Driver approved')->success()->send();
+                        Notification::make()->title('Đã phê duyệt tài xế')->success()->send();
                     }),
                 Action::make('reject')
-                    ->label('Reject')
+                    ->label('Từ chối')
                     ->color('danger')
                     ->form([
                         TextInput::make('reason_code')->required()->maxLength(50),
@@ -74,10 +72,10 @@ class DriverProfilesTable
                     ->visible(fn (DriverProfile $record): bool => $record->review_status === DriverReviewStatus::PendingReview)
                     ->action(function (DriverProfile $record, array $data, DriverReviewService $review): void {
                         $review->reject($record, self::admin(), $data['reason_code']);
-                        Notification::make()->title('Driver application rejected')->success()->send();
+                        Notification::make()->title('Đã từ chối hồ sơ tài xế')->success()->send();
                     }),
                 Action::make('suspend')
-                    ->label('Suspend')
+                    ->label('Tạm ngưng')
                     ->color('danger')
                     ->form([
                         TextInput::make('reason_code')->required()->maxLength(50),
@@ -85,7 +83,7 @@ class DriverProfilesTable
                     ->visible(fn (DriverProfile $record): bool => $record->review_status === DriverReviewStatus::Approved)
                     ->action(function (DriverProfile $record, array $data, DriverReviewService $review): void {
                         $review->suspend($record, self::admin(), $data['reason_code']);
-                        Notification::make()->title('Driver suspended')->success()->send();
+                        Notification::make()->title('Đã tạm ngưng tài xế')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

@@ -39,21 +39,21 @@ class DriverAvailabilityService
                 ->first();
 
             if ($profile === null || $profile->review_status !== DriverReviewStatus::Approved) {
-                $this->throwEligibility('The driver profile is not approved.');
+                $this->throwEligibility('Hồ sơ tài xế chưa được phê duyệt.');
             }
 
             if ($profile->availability_status === DriverAvailabilityStatus::Busy) {
-                $this->throwEligibility('A busy driver cannot change availability.');
+                $this->throwEligibility('Tài xế đang bận không thể thay đổi trạng thái sẵn sàng.');
             }
 
             if (DB::table('assignments')->where('driver_profile_id', $profile->id)->where('status', 'ACTIVE')->exists()) {
-                $this->throwEligibility('The driver already has an active assignment.');
+                $this->throwEligibility('Tài xế đã có chuyến được phân công đang hoạt động.');
             }
 
             $walletBalance = $user->wallet()->value('balance');
 
             if ($walletBalance === null || (float) $walletBalance < 0) {
-                $this->throwEligibility('The driver wallet is missing or has a negative balance.');
+                $this->throwEligibility('Không tìm thấy ví tài xế hoặc số dư ví đang âm.');
             }
 
             $vehicle = $profile->vehicles()
@@ -62,7 +62,7 @@ class DriverAvailabilityService
                 ->first();
 
             if ($vehicle === null) {
-                $this->throwEligibility('An approved selected vehicle is required.');
+                $this->throwEligibility('Cần có xe được chọn đã được phê duyệt.');
             }
 
             $requestedServices = collect($attributes['service_types']);
@@ -73,7 +73,7 @@ class DriverAvailabilityService
                 ->map(fn ($capability): string => $capability->service_type->value);
 
             if ($requestedServices->diff($approvedServices)->isNotEmpty()) {
-                $this->throwEligibility('One or more services are not approved for the selected vehicle.');
+                $this->throwEligibility('Một hoặc nhiều dịch vụ chưa được phê duyệt cho xe đã chọn.');
             }
 
             $this->validateDocuments($profile, $vehicle->id);
@@ -82,7 +82,7 @@ class DriverAvailabilityService
 
             if ($lastLocation !== null && ! $capturedAt->isAfter($lastLocation->last_location_at)) {
                 throw ValidationException::withMessages([
-                    'captured_at' => ['The location sample is older than the current driver location.'],
+                    'captured_at' => ['Mẫu vị trí cũ hơn vị trí hiện tại của tài xế.'],
                 ]);
             }
 
@@ -131,7 +131,7 @@ class DriverAvailabilityService
                 $profile->availability_status === DriverAvailabilityStatus::Busy
                 || DB::table('assignments')->where('driver_profile_id', $profile->id)->where('status', 'ACTIVE')->exists()
             ) {
-                $this->throwEligibility('A busy driver cannot go offline.');
+                $this->throwEligibility('Tài xế đang bận không thể chuyển sang ngoại tuyến.');
             }
 
             $profile->forceFill([
@@ -160,11 +160,11 @@ class DriverAvailabilityService
             ->diff($approvedTypes);
 
         if ($missing->isNotEmpty()) {
-            $this->throwEligibility('Required approved documents are missing.');
+            $this->throwEligibility('Thiếu giấy tờ bắt buộc đã được phê duyệt.');
         }
 
         if ($documents->contains(fn ($document): bool => $document->expires_at?->isPast() === true)) {
-            $this->throwEligibility('One or more documents have expired.');
+            $this->throwEligibility('Một hoặc nhiều giấy tờ đã hết hạn.');
         }
     }
 

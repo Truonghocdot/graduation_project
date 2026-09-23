@@ -26,27 +26,27 @@ class ServiceRequestsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('Request ID')->copyable()->searchable(),
+                TextColumn::make('public_id')->label('Mã yêu cầu')->copyable()->searchable(),
                 TextColumn::make('service_type')->badge()->sortable(),
                 TextColumn::make('status')->badge()->sortable(),
-                TextColumn::make('creator.name')->label('Customer')->searchable(),
-                TextColumn::make('vehicleType.name')->label('Vehicle')->sortable(),
-                TextColumn::make('deliveryOrder.payer_type')->label('Payer')->badge()->placeholder('ORDERER'),
-                TextColumn::make('payment.method')->label('Payment')->badge(),
-                TextColumn::make('payment.customer_payable')->label('Payable')->money('VND')->sortable(),
-                TextColumn::make('scheduled_at')->dateTime()->placeholder('Now')->sortable(),
+                TextColumn::make('creator.name')->label('Khách hàng')->searchable(),
+                TextColumn::make('vehicleType.name')->label('Loại xe')->sortable(),
+                TextColumn::make('deliveryOrder.payer_type')->label('Người thanh toán')->badge()->placeholder('Người đặt'),
+                TextColumn::make('payment.method')->label('Phương thức thanh toán')->badge(),
+                TextColumn::make('payment.customer_payable')->label('Số tiền phải trả')->money('VND')->sortable(),
+                TextColumn::make('scheduled_at')->dateTime()->placeholder('Ngay bây giờ')->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('service_type')->options(collect(ServiceType::cases())->mapWithKeys(
-                    fn (ServiceType $type): array => [$type->value => $type->value],
+                    fn (ServiceType $type): array => [$type->value => $type->getLabel()],
                 )->all()),
                 SelectFilter::make('status')->options(collect(ServiceRequestStatus::cases())->mapWithKeys(
-                    fn (ServiceRequestStatus $status): array => [$status->value => $status->value],
+                    fn (ServiceRequestStatus $status): array => [$status->value => $status->getLabel()],
                 )->all()),
                 SelectFilter::make('payment_method')
                     ->options(collect(PaymentMethod::cases())->mapWithKeys(
-                        fn (PaymentMethod $method): array => [$method->value => $method->value],
+                        fn (PaymentMethod $method): array => [$method->value => $method->getLabel()],
                     )->all())
                     ->query(fn (Builder $query, array $data): Builder => $query->when(
                         $data['value'] ?? null,
@@ -57,7 +57,7 @@ class ServiceRequestsTable
                     )),
                 SelectFilter::make('payer_type')
                     ->options(collect(PayerType::cases())->mapWithKeys(
-                        fn (PayerType $payer): array => [$payer->value => $payer->value],
+                        fn (PayerType $payer): array => [$payer->value => $payer->getLabel()],
                     )->all())
                     ->query(fn (Builder $query, array $data): Builder => $query->when(
                         $data['value'] ?? null,
@@ -72,7 +72,7 @@ class ServiceRequestsTable
             ->recordActions([
                 ViewAction::make(),
                 Action::make('restartMatching')
-                    ->label('Restart matching')
+                    ->label('Tìm lại tài xế')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->form([
@@ -86,10 +86,10 @@ class ServiceRequestsTable
                     ], true))
                     ->action(function (ServiceRequest $record, array $data, MatchingAdminService $service): void {
                         $service->restart($record, self::admin(), $data['reason_code']);
-                        Notification::make()->title('Matching restarted')->success()->send();
+                        Notification::make()->title('Đã bắt đầu tìm lại tài xế')->success()->send();
                     }),
                 Action::make('cancel')
-                    ->label('Cancel')
+                    ->label('Hủy')
                     ->icon('heroicon-o-x-circle')
                     ->color('danger')
                     ->requiresConfirmation()
@@ -107,7 +107,7 @@ class ServiceRequestsTable
                     ], true))
                     ->action(function (ServiceRequest $record, array $data, MatchingAdminService $service): void {
                         $service->cancel($record, self::admin(), $data['reason_code']);
-                        Notification::make()->title('Service request cancelled')->success()->send();
+                        Notification::make()->title('Đã hủy yêu cầu dịch vụ')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

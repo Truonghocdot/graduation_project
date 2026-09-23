@@ -23,21 +23,21 @@ class SupportTicketsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('Ticket ID')->copyable(),
+                TextColumn::make('public_id')->label('Mã yêu cầu')->copyable(),
                 TextColumn::make('priority')->badge()->sortable(),
                 TextColumn::make('category')->badge(),
                 TextColumn::make('subject')->searchable()->limit(45),
-                TextColumn::make('opener.name')->label('Opened by')->searchable(),
-                TextColumn::make('assignee.name')->label('Assigned to')->placeholder('Queue'),
+                TextColumn::make('opener.name')->label('Người tạo')->searchable(),
+                TextColumn::make('assignee.name')->label('Người phụ trách')->placeholder('Hàng chờ'),
                 TextColumn::make('status')->badge()->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('priority')->options(collect(SupportPriority::cases())->mapWithKeys(
-                    fn (SupportPriority $priority): array => [$priority->value => $priority->value],
+                    fn (SupportPriority $priority): array => [$priority->value => $priority->getLabel()],
                 )->all()),
                 SelectFilter::make('status')->options(collect(SupportTicketStatus::cases())->mapWithKeys(
-                    fn (SupportTicketStatus $status): array => [$status->value => $status->value],
+                    fn (SupportTicketStatus $status): array => [$status->value => $status->getLabel()],
                 )->all()),
                 SelectFilter::make('assigned_to')->relationship('assignee', 'name'),
             ])
@@ -49,7 +49,7 @@ class SupportTicketsTable
                     ->action(function (SupportTicket $record, SupportAdminService $service): void {
                         $user = self::staff();
                         $service->assignTicket($record, $user, $user);
-                        Notification::make()->title('Ticket claimed')->success()->send();
+                        Notification::make()->title('Đã nhận xử lý yêu cầu')->success()->send();
                     }),
                 Action::make('resolve')
                     ->color('success')
@@ -72,7 +72,7 @@ class SupportTicketsTable
                             $data['resolution_code'],
                             $data['resolution_note'],
                         );
-                        Notification::make()->title('Ticket resolved')->success()->send();
+                        Notification::make()->title('Đã xử lý yêu cầu hỗ trợ')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

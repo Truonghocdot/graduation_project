@@ -1,11 +1,11 @@
 {
-    "name": "driver",
-    "short_name": "driver",
+    "name": "Tài xế",
+    "short_name": "Tài xế",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#215F9A",
     "theme_color": "#215F9A",
-    "description": "A new Flutter project.",
+    "description": "Ứng dụng dành cho tài xế.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

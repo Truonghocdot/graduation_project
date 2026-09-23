@@ -14,10 +14,10 @@ class IncidentInfolist
             TextEntry::make('severity')->badge(),
             TextEntry::make('incident_type')->badge(),
             TextEntry::make('status')->badge(),
-            TextEntry::make('reporter.name')->label('Reported by'),
-            TextEntry::make('assignee.name')->label('Assigned to')->placeholder('Queue'),
-            TextEntry::make('serviceRequest.public_id')->label('Request ID')->copyable(),
-            TextEntry::make('serviceRequest.status')->label('Request status')->badge(),
+            TextEntry::make('reporter.name')->label('Người báo cáo'),
+            TextEntry::make('assignee.name')->label('Người phụ trách')->placeholder('Hàng chờ'),
+            TextEntry::make('serviceRequest.public_id')->label('Mã yêu cầu')->copyable(),
+            TextEntry::make('serviceRequest.status')->label('Trạng thái yêu cầu')->badge(),
             TextEntry::make('description')->columnSpanFull(),
             TextEntry::make('evidence')
                 ->formatStateUsing(fn (mixed $state): string => json_encode(
@@ -25,7 +25,7 @@ class IncidentInfolist
                     JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES,
                 ) ?: '{}')
                 ->columnSpanFull(),
-            TextEntry::make('resolution_code')->placeholder('Not resolved'),
+            TextEntry::make('resolution_code')->placeholder('Chưa xử lý'),
             TextEntry::make('resolved_at')->dateTime(),
         ])->columns(2);
     }

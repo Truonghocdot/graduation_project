@@ -41,7 +41,7 @@ class _LoginPageState extends State<LoginPage> {
                   const Icon(Icons.route, size: 48, color: Color(0xFF146B52)),
                   const SizedBox(height: 16),
                   Text(
-                    'Delivery & Drive',
+                    'Giao hàng & Đặt xe',
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineSmall,
                   ),

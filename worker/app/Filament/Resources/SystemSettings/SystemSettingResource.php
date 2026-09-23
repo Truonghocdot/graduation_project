@@ -27,9 +27,13 @@ class SystemSettingResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'key';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pricing';
+    protected static string|UnitEnum|null $navigationGroup = 'Giá cước';
 
-    protected static ?string $navigationLabel = 'Settings';
+    protected static ?string $navigationLabel = 'Thiết lập';
+
+    protected static ?string $modelLabel = 'thiết lập hệ thống';
+
+    protected static ?string $pluralModelLabel = 'thiết lập hệ thống';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
 

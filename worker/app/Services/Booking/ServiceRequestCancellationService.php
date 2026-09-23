@@ -55,13 +55,13 @@ class ServiceRequestCancellationService
                 ServiceRequestStatus::SearchingDriver,
             ], true)) {
                 throw ValidationException::withMessages([
-                    'service_request' => ['The service request cannot be cancelled in its current state.'],
+                    'service_request' => ['Không thể hủy yêu cầu dịch vụ ở trạng thái hiện tại.'],
                 ]);
             }
 
             if (DB::table('assignments')->where('service_request_id', $request->id)->where('status', 'ACTIVE')->exists()) {
                 throw ValidationException::withMessages([
-                    'service_request' => ['The service request already has an active assignment.'],
+                    'service_request' => ['Yêu cầu dịch vụ đã có chuyến được phân công đang hoạt động.'],
                 ]);
             }
 

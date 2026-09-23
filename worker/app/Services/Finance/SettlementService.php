@@ -59,14 +59,14 @@ class SettlementService
                 ServiceRequestStatus::Completed,
             ], true)) {
                 throw ValidationException::withMessages([
-                    'settlement' => ['The service has not reached a terminal execution state.'],
+                    'settlement' => ['Dịch vụ chưa đạt trạng thái thực hiện cuối cùng.'],
                 ]);
             }
 
             if ($payment->method === PaymentMethod::Cash
                 && abs($payment->cash_collected - $payment->customer_payable) > 0.01) {
                 throw ValidationException::withMessages([
-                    'cash_collected' => ['The collected cash must match the customer payable amount.'],
+                    'cash_collected' => ['Số tiền mặt đã thu phải khớp với số tiền khách hàng cần thanh toán.'],
                 ]);
             }
 
@@ -79,7 +79,7 @@ class SettlementService
 
             if ($driverWallet === null) {
                 throw ValidationException::withMessages([
-                    'settlement' => ['The driver wallet is missing.'],
+                    'settlement' => ['Không tìm thấy ví của tài xế.'],
                 ]);
             }
 

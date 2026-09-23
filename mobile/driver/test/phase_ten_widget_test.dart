@@ -36,11 +36,11 @@ void main() {
     await tester.tap(find.byKey(const Key('driver-login-button')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Trạng thái: CHƯA TẠO'), findsOneWidget);
+    expect(find.text('Trạng thái: Chưa tạo'), findsOneWidget);
     expect(find.text('Nhận chuyến'), findsNothing);
     await tester.tap(find.text('Lưu hồ sơ'));
     await tester.pumpAndSettle();
-    expect(find.text('Trạng thái: DRAFT'), findsOneWidget);
+    expect(find.text('Trạng thái: Bản nháp'), findsOneWidget);
     expect(transport.draftSaved, isTrue);
     expect(tester.takeException(), isNull);
   });

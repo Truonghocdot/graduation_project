@@ -64,7 +64,7 @@ test('shows service request payment details and keeps the resource read only', f
     $this->get(ServiceRequestResource::getUrl('view', ['record' => $serviceRequest]))
         ->assertOk()
         ->assertSee($serviceRequest->public_id)
-        ->assertSee(PaymentMethod::Cash->value);
+        ->assertSee(PaymentMethod::Cash->getLabel());
 
     expect(ServiceRequestResource::canCreate())->toBeFalse()
         ->and(ServiceRequestResource::canEdit($serviceRequest))->toBeFalse()

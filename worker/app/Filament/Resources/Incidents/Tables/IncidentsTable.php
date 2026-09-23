@@ -21,23 +21,23 @@ class IncidentsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('Incident ID')->copyable(),
+                TextColumn::make('public_id')->label('Mã sự cố')->copyable(),
                 TextColumn::make('severity')->badge()->sortable(),
                 TextColumn::make('incident_type')->badge(),
-                TextColumn::make('reporter.name')->label('Reported by')->searchable(),
-                TextColumn::make('serviceRequest.public_id')->label('Request')->copyable(),
-                TextColumn::make('assignee.name')->label('Assigned to')->placeholder('Queue'),
+                TextColumn::make('reporter.name')->label('Người báo cáo')->searchable(),
+                TextColumn::make('serviceRequest.public_id')->label('Yêu cầu')->copyable(),
+                TextColumn::make('assignee.name')->label('Người phụ trách')->placeholder('Hàng chờ'),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('created_at')->dateTime()->sortable(),
             ])
             ->filters([
                 SelectFilter::make('status')->options(collect(IncidentStatus::cases())->mapWithKeys(
-                    fn (IncidentStatus $status): array => [$status->value => $status->value],
+                    fn (IncidentStatus $status): array => [$status->value => $status->getLabel()],
                 )->all()),
                 SelectFilter::make('severity')->options([
-                    'NORMAL' => 'NORMAL',
-                    'HIGH' => 'HIGH',
-                    'CRITICAL' => 'CRITICAL',
+                    'NORMAL' => 'Bình thường',
+                    'HIGH' => 'Cao',
+                    'CRITICAL' => 'Nghiêm trọng',
                 ]),
             ])
             ->recordActions([
@@ -58,7 +58,7 @@ class IncidentsTable
                             self::staff(),
                             $data['resolution_code'],
                         );
-                        Notification::make()->title('Incident resolved')->success()->send();
+                        Notification::make()->title('Đã xử lý sự cố')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

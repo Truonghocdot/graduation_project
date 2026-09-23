@@ -12,16 +12,16 @@ class PricingRuleInfolist
     {
         return $schema->components([
             TextEntry::make('service_type')->badge(),
-            TextEntry::make('vehicleType.name')->label('Vehicle type'),
+            TextEntry::make('vehicleType.name')->label('Loại xe'),
             TextEntry::make('base_distance_km')->suffix(' km'),
             TextEntry::make('base_fare')->money('VND'),
             TextEntry::make('price_per_extra_km')->money('VND'),
             TextEntry::make('driver_rate')->numeric(decimalPlaces: 2),
             TextEntry::make('effective_from')->dateTime(),
-            TextEntry::make('effective_to')->dateTime()->placeholder('Open ended'),
+            TextEntry::make('effective_to')->dateTime()->placeholder('Không giới hạn'),
             IconEntry::make('is_active')->boolean(),
-            TextEntry::make('quotes_count')->label('Quotes'),
-            TextEntry::make('creator.name')->label('Created by'),
+            TextEntry::make('quotes_count')->label('Báo giá'),
+            TextEntry::make('creator.name')->label('Người tạo'),
             TextEntry::make('created_at')->dateTime(),
         ])->columns(2);
     }

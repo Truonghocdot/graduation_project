@@ -22,21 +22,19 @@ class RatingsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('serviceRequest.public_id')->label('Request')->copyable(),
+                TextColumn::make('serviceRequest.public_id')->label('Yêu cầu')->copyable(),
                 TextColumn::make('direction')->badge(),
-                TextColumn::make('reviewer.name')->label('Reviewer')->searchable(),
-                TextColumn::make('reviewee.name')->label('Reviewee')->searchable(),
+                TextColumn::make('reviewer.name')->label('Người đánh giá')->searchable(),
+                TextColumn::make('reviewee.name')->label('Người được đánh giá')->searchable(),
                 TextColumn::make('score')->sortable(),
                 TextColumn::make('comment')->limit(50),
                 TextColumn::make('moderation_status')->badge(),
                 TextColumn::make('created_at')->dateTime(),
             ])
             ->filters([
-                SelectFilter::make('moderation_status')->options(
-                    collect(RatingModerationStatus::cases())->mapWithKeys(
-                        fn (RatingModerationStatus $status): array => [$status->value => $status->value],
-                    )->all(),
-                ),
+                SelectFilter::make('moderation_status')->options(collect(RatingModerationStatus::cases())->mapWithKeys(
+                    fn (RatingModerationStatus $status): array => [$status->value => $status->getLabel()],
+                )->all()),
             ])
             ->recordActions([
                 ViewAction::make(),
@@ -44,7 +42,7 @@ class RatingsTable
                     ->form([
                         Select::make('status')
                             ->options(collect(RatingModerationStatus::cases())->mapWithKeys(
-                                fn (RatingModerationStatus $status): array => [$status->value => $status->value],
+                                fn (RatingModerationStatus $status): array => [$status->value => $status->getLabel()],
                             )->all())
                             ->required(),
                         TextInput::make('reason_code')->required()->maxLength(50),
@@ -60,7 +58,7 @@ class RatingsTable
                             RatingModerationStatus::from($data['status']),
                             $data['reason_code'],
                         );
-                        Notification::make()->title('Rating moderated')->success()->send();
+                        Notification::make()->title('Đã kiểm duyệt đánh giá')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

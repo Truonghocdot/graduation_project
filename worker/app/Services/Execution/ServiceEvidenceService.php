@@ -29,7 +29,7 @@ class ServiceEvidenceService
         );
 
         if ($path === false) {
-            throw new \RuntimeException('The evidence file could not be stored.');
+            throw new \RuntimeException('Không thể lưu tệp bằng chứng.');
         }
 
         try {

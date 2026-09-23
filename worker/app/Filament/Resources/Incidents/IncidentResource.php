@@ -22,7 +22,11 @@ class IncidentResource extends Resource
 {
     protected static ?string $model = Incident::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Support';
+    protected static string|UnitEnum|null $navigationGroup = 'Hỗ trợ';
+
+    protected static ?string $modelLabel = 'sự cố';
+
+    protected static ?string $pluralModelLabel = 'sự cố';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedExclamationTriangle;
 

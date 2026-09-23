@@ -16,7 +16,7 @@ class PricingRuleForm
         return $schema->components([
             Select::make('service_type')
                 ->options(collect(ServiceType::cases())->mapWithKeys(
-                    fn (ServiceType $serviceType): array => [$serviceType->value => $serviceType->value],
+                    fn (ServiceType $serviceType): array => [$serviceType->value => $serviceType->getLabel()],
                 )->all())
                 ->required()
                 ->disabledOn('edit'),

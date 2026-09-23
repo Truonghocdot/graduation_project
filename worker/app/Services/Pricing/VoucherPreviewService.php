@@ -32,19 +32,19 @@ class VoucherPreviewService
             ->first();
 
         if ($voucher === null) {
-            $this->invalidVoucher('The voucher is invalid or expired.');
+            $this->invalidVoucher('Mã giảm giá không hợp lệ hoặc đã hết hạn.');
         }
 
         if ($voucher->service_scope !== null && $voucher->service_scope !== $serviceType) {
-            $this->invalidVoucher('The voucher does not apply to this service.');
+            $this->invalidVoucher('Mã giảm giá không áp dụng cho dịch vụ này.');
         }
 
         if ($grossFare < $voucher->minimum_order_amount) {
-            $this->invalidVoucher('The quote does not meet the voucher minimum amount.');
+            $this->invalidVoucher('Báo giá không đáp ứng giá trị đơn hàng tối thiểu của mã giảm giá.');
         }
 
         if ($voucher->total_usage_limit !== null && $voucher->used_count >= $voucher->total_usage_limit) {
-            $this->invalidVoucher('The voucher usage limit has been reached.');
+            $this->invalidVoucher('Mã giảm giá đã đạt giới hạn sử dụng.');
         }
 
         if ($voucher->per_user_usage_limit !== null) {
@@ -55,7 +55,7 @@ class VoucherPreviewService
                 ->count();
 
             if ($userUsageCount >= $voucher->per_user_usage_limit) {
-                $this->invalidVoucher('You have reached the voucher usage limit.');
+                $this->invalidVoucher('Bạn đã đạt giới hạn sử dụng mã giảm giá.');
             }
         }
 

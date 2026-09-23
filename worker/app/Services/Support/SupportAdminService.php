@@ -76,7 +76,7 @@ class SupportAdminService
                 SupportTicketStatus::Closed,
             ], true)) {
                 throw ValidationException::withMessages([
-                    'ticket' => ['The ticket has already been resolved.'],
+                    'ticket' => ['Yêu cầu hỗ trợ đã được xử lý.'],
                 ]);
             }
 

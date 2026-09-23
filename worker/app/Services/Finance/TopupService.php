@@ -107,7 +107,7 @@ class TopupService
                 || $topup->expires_at->isPast()
                 || abs($topup->amount - $amount) > 0.01) {
                 throw ValidationException::withMessages([
-                    'webhook' => ['The top-up reference, status, expiry, or amount is invalid.'],
+                    'webhook' => ['Thông tin tham chiếu, trạng thái, thời hạn hoặc số tiền nạp không hợp lệ.'],
                 ]);
             }
 

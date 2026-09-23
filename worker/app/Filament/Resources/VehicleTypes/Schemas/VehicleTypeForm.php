@@ -13,7 +13,7 @@ class VehicleTypeForm
         return $schema
             ->components([
                 TextInput::make('unique_key')
-                    ->label('Unique key')
+                    ->label('Mã duy nhất')
                     ->required()
                     ->maxLength(50)
                     ->unique(ignoreRecord: true)
@@ -22,27 +22,27 @@ class VehicleTypeForm
                     ->required()
                     ->maxLength(100),
                 TextInput::make('passenger_capacity')
-                    ->label('Passenger capacity')
+                    ->label('Sức chứa hành khách')
                     ->numeric()
                     ->minValue(1),
                 TextInput::make('max_weight_kg')
-                    ->label('Max weight (kg)')
+                    ->label('Khối lượng tối đa (kg)')
                     ->numeric()
                     ->minValue(0),
                 TextInput::make('max_length_cm')
-                    ->label('Max length (cm)')
+                    ->label('Chiều dài tối đa (cm)')
                     ->numeric()
                     ->minValue(0),
                 TextInput::make('max_width_cm')
-                    ->label('Max width (cm)')
+                    ->label('Chiều rộng tối đa (cm)')
                     ->numeric()
                     ->minValue(0),
                 TextInput::make('max_height_cm')
-                    ->label('Max height (cm)')
+                    ->label('Chiều cao tối đa (cm)')
                     ->numeric()
                     ->minValue(0),
                 Toggle::make('is_active')
-                    ->label('Active')
+                    ->label('Đang hoạt động')
                     ->default(true),
             ]);
     }

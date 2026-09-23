@@ -14,9 +14,9 @@ use UnitEnum;
 
 class MatchingMonitor extends Page
 {
-    protected static string|UnitEnum|null $navigationGroup = 'Operations';
+    protected static string|UnitEnum|null $navigationGroup = 'Vận hành';
 
-    protected static ?string $navigationLabel = 'Matching monitor';
+    protected static ?string $navigationLabel = 'Theo dõi tìm tài xế';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedSignal;
 

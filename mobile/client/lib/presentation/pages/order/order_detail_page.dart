@@ -51,7 +51,10 @@ class OrderDetailPage extends StatelessWidget {
                     'Điểm đến',
                     current.dropoffAddress ?? 'Không có dữ liệu',
                   ),
-                  _row('Thanh toán', current.paymentMethod.apiValue),
+                  _row(
+                    'Thanh toán',
+                    formatClientValue(current.paymentMethod.apiValue),
+                  ),
                   _row(
                     'Tổng tiền',
                     '${current.customerPayable.toStringAsFixed(0)} VND',

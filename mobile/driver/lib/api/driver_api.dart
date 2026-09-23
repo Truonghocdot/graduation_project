@@ -341,7 +341,7 @@ class DriverChatMessage {
   factory DriverChatMessage.fromJson(Map<String, dynamic> json) {
     final sender = json['sender'] as Map<String, dynamic>?;
     return DriverChatMessage(
-      senderName: sender?['name']?.toString() ?? 'User',
+      senderName: sender?['name']?.toString() ?? 'Người dùng',
       body: json['body']?.toString() ?? '',
     );
   }
@@ -1226,7 +1226,7 @@ class DriverApi
   List<Map<String, dynamic>> _listData(ApiResponse response) {
     final data = response.body['data'];
     if (data is! List) {
-      throw const DriverApiException('Invalid server response.');
+      throw const DriverApiException('Phản hồi từ máy chủ không hợp lệ.');
     }
     return data.whereType<Map<String, dynamic>>().toList(growable: false);
   }

@@ -75,7 +75,7 @@ class _DriverKycPageState extends State<DriverKycPage> {
                 child: ListTile(
                   leading: const Icon(Icons.badge_outlined),
                   title: Text(
-                    'Trạng thái: ${profile?.reviewStatus ?? 'CHƯA TẠO'}',
+                    'Trạng thái: ${profile == null ? 'Chưa tạo' : formatDriverValue(profile.reviewStatus)}',
                   ),
                   subtitle: profile?.reviewReason == null
                       ? const Text('Hoàn thiện hồ sơ để gửi admin xét duyệt.')
@@ -135,7 +135,11 @@ class _DriverKycPageState extends State<DriverKycPage> {
                       child: ListTile(
                         leading: const Icon(Icons.two_wheeler_outlined),
                         title: Text(vehicle['plate_number']?.toString() ?? ''),
-                        subtitle: Text(vehicle['status']?.toString() ?? ''),
+                        subtitle: Text(
+                          formatDriverValue(
+                            vehicle['status']?.toString() ?? '',
+                          ),
+                        ),
                         trailing: vehicle['is_selected'] == true
                             ? const Icon(
                                 Icons.check_circle,
@@ -180,8 +184,12 @@ class _DriverKycPageState extends State<DriverKycPage> {
                   for (final document in profile.documents)
                     ListTile(
                       leading: const Icon(Icons.description_outlined),
-                      title: Text(document['type']?.toString() ?? ''),
-                      subtitle: Text(document['status']?.toString() ?? ''),
+                      title: Text(
+                        formatDriverValue(document['type']?.toString() ?? ''),
+                      ),
+                      subtitle: Text(
+                        formatDriverValue(document['status']?.toString() ?? ''),
+                      ),
                     ),
                   DropdownButtonFormField<String>(
                     initialValue: documentType,
@@ -190,8 +198,10 @@ class _DriverKycPageState extends State<DriverKycPage> {
                     ),
                     items: documentTypes
                         .map(
-                          (type) =>
-                              DropdownMenuItem(value: type, child: Text(type)),
+                          (type) => DropdownMenuItem(
+                            value: type,
+                            child: Text(formatDriverValue(type)),
+                          ),
                         )
                         .toList(growable: false),
                     onChanged: (value) =>
@@ -234,13 +244,13 @@ class _DriverKycPageState extends State<DriverKycPage> {
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   CheckboxListTile(
-                    title: const Text('Delivery'),
+                    title: const Text('Giao hàng'),
                     value: state.selectedServices.contains('DELIVERY'),
                     onChanged: (value) =>
                         state.toggleService('DELIVERY', value ?? false),
                   ),
                   CheckboxListTile(
-                    title: const Text('Drive'),
+                    title: const Text('Đặt xe'),
                     value: state.selectedServices.contains('DRIVE'),
                     onChanged: (value) =>
                         state.toggleService('DRIVE', value ?? false),

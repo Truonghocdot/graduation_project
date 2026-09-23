@@ -38,7 +38,7 @@ class LedgerService
             ->sum('amount');
 
         if (abs((float) $debits - (float) $credits) > 0.01 || (float) $debits <= 0) {
-            throw new InvalidArgumentException('Ledger entries must be positive and balanced.');
+            throw new InvalidArgumentException('Các bút toán sổ cái phải có giá trị dương và cân đối.');
         }
 
         $transaction = LedgerTransaction::query()->create([

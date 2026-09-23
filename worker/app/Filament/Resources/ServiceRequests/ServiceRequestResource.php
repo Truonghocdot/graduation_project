@@ -23,9 +23,13 @@ class ServiceRequestResource extends Resource
 
     protected static ?string $model = ServiceRequest::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Operations';
+    protected static string|UnitEnum|null $navigationGroup = 'Vận hành';
 
-    protected static ?string $navigationLabel = 'Service requests';
+    protected static ?string $navigationLabel = 'Yêu cầu dịch vụ';
+
+    protected static ?string $modelLabel = 'yêu cầu dịch vụ';
+
+    protected static ?string $pluralModelLabel = 'yêu cầu dịch vụ';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedTruck;
 

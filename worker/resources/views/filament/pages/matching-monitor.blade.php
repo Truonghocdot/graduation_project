@@ -3,12 +3,12 @@
         <table class="w-full text-left text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">
                 <tr>
-                    <th class="px-4 py-3">Request</th>
-                    <th class="px-4 py-3">Service</th>
-                    <th class="px-4 py-3">Status</th>
-                    <th class="px-4 py-3">Batch</th>
-                    <th class="px-4 py-3">Offers</th>
-                    <th class="px-4 py-3">Driver</th>
+                    <th class="px-4 py-3">Yêu cầu</th>
+                    <th class="px-4 py-3">Dịch vụ</th>
+                    <th class="px-4 py-3">Trạng thái</th>
+                    <th class="px-4 py-3">Lần tìm</th>
+                    <th class="px-4 py-3">Đề nghị</th>
+                    <th class="px-4 py-3">Tài xế</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-gray-200 dark:divide-white/10">
@@ -23,17 +23,17 @@
                             </a>
                             <div class="text-xs text-gray-500">{{ $request->creator->name }}</div>
                         </td>
-                        <td class="px-4 py-3">{{ $request->service_type->value }}</td>
-                        <td class="px-4 py-3">{{ $request->status->value }}</td>
+                        <td class="px-4 py-3">{{ $request->service_type->getLabel() }}</td>
+                        <td class="px-4 py-3">{{ $request->status->getLabel() }}</td>
                         <td class="px-4 py-3">{{ $request->search_attempt }}</td>
                         <td class="px-4 py-3">{{ $request->driverOffers->count() }}</td>
                         <td class="px-4 py-3">
-                            {{ $request->assignments->first()?->driverProfile?->user?->name ?? 'Unassigned' }}
+                            {{ $request->assignments->first()?->driverProfile?->user?->name ?? 'Chưa phân công' }}
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td class="px-4 py-8 text-center text-gray-500" colspan="6">No active matching requests.</td>
+                        <td class="px-4 py-8 text-center text-gray-500" colspan="6">Không có yêu cầu tìm tài xế đang hoạt động.</td>
                     </tr>
                 @endforelse
             </tbody>

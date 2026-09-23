@@ -68,7 +68,7 @@ class _DriverHistoryPageState extends State<DriverHistoryPage> {
                   ),
                   title: Text(job.pickupAddress ?? job.id),
                   subtitle: Text(
-                    '${job.dropoffAddress ?? job.serviceType}\n'
+                    '${job.dropoffAddress ?? formatDriverValue(job.serviceType)}\n'
                     '${(job.driverNetEarning ?? 0).toStringAsFixed(0)} VND',
                   ),
                   isThreeLine: true,

@@ -35,7 +35,7 @@ class ProfilePage extends StatelessWidget {
                         'Tài khoản khách hàng',
                         style: TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      Text('Delivery & Drive'),
+                      Text('Giao hàng & Đặt xe'),
                     ],
                   ),
                 ),
@@ -198,7 +198,7 @@ class ProfilePage extends StatelessWidget {
                     ? Icons.notifications_none
                     : Icons.notifications_active_outlined,
               ),
-              title: Text(notification.type),
+              title: Text(formatClientValue(notification.type)),
               trailing: notification.isRead
                   ? null
                   : IconButton(
@@ -231,7 +231,7 @@ class ProfilePage extends StatelessWidget {
           for (final ticket in controller.tickets)
             ListTile(
               title: Text(ticket.subject),
-              subtitle: Text(ticket.status),
+              subtitle: Text(formatClientValue(ticket.status)),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => _ticketDetail(context, ticket.id),
             ),

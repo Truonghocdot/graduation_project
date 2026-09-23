@@ -59,7 +59,7 @@ class PhoneVerificationService
                 ->first();
 
             if ($verification === null || $verification->expires_at->isPast()) {
-                return ['verification' => null, 'error' => 'The verification code is invalid or expired.'];
+                return ['verification' => null, 'error' => 'Mã xác minh không hợp lệ hoặc đã hết hạn.'];
             }
 
             if (! Hash::check($code, $verification->code_hash)) {
@@ -71,7 +71,7 @@ class PhoneVerificationService
 
                 $verification->save();
 
-                return ['verification' => null, 'error' => 'The verification code is invalid or expired.'];
+                return ['verification' => null, 'error' => 'Mã xác minh không hợp lệ hoặc đã hết hạn.'];
             }
 
             $verification->verified_at = now();

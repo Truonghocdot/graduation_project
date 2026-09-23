@@ -114,7 +114,7 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
                         children: [
                           Expanded(
                             child: Text(
-                              offer.serviceType,
+                              formatDriverValue(offer.serviceType),
                               style: Theme.of(context).textTheme.titleMedium,
                             ),
                           ),
@@ -123,7 +123,7 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'Thanh toán ${offer.paymentMethod} · '
+                        'Thanh toán ${formatDriverValue(offer.paymentMethod)} · '
                         '${offer.customerPayable.toStringAsFixed(0)} VND',
                       ),
                       Text(

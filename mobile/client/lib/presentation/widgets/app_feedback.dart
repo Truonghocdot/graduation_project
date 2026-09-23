@@ -1,5 +1,45 @@
 import 'package:flutter/material.dart';
 
+String formatClientValue(String value) {
+  return switch (value) {
+    'DELIVERY' => 'Giao hàng',
+    'DRIVE' => 'Đặt xe',
+    'WALLET' => 'Ví',
+    'CASH' => 'Tiền mặt',
+    'ORDERER' => 'Người đặt',
+    'RECIPIENT' => 'Người nhận',
+    'SCHEDULED' => 'Đã đặt lịch',
+    'SEARCHING_DRIVER' => 'Đang tìm tài xế',
+    'CANCELLED' => 'Đã hủy',
+    'ASSIGNED' => 'Đã phân công tài xế',
+    'DRIVER_ARRIVING_PICKUP' => 'Tài xế đang đến điểm lấy hàng',
+    'AT_PICKUP' => 'Tài xế đã đến điểm lấy hàng',
+    'PICKED_UP' => 'Đã lấy hàng',
+    'IN_DELIVERY' => 'Đang giao hàng',
+    'DELIVERED' => 'Đã giao hàng',
+    'DELIVERY_FAILED' => 'Giao hàng thất bại',
+    'RETURNING' => 'Đang hoàn hàng',
+    'RETURNED' => 'Đã hoàn hàng',
+    'DRIVER_ARRIVING' => 'Tài xế đang đến',
+    'DRIVER_ARRIVED' => 'Tài xế đã đến',
+    'IN_TRIP' => 'Đang trong chuyến đi',
+    'TRIP_ENDED' => 'Đã kết thúc chuyến đi',
+    'IN_PROGRESS' => 'Đang thực hiện',
+    'COMPLETED' => 'Đã hoàn thành',
+    'OPEN' => 'Đang mở',
+    'IN_REVIEW' => 'Đang xử lý',
+    'WAITING_FOR_CUSTOMER' => 'Chờ khách hàng phản hồi',
+    'RESOLVED' => 'Đã xử lý',
+    'REOPENED' => 'Đã mở lại',
+    'CLOSED' => 'Đã đóng',
+    'PENDING' => 'Chờ xử lý',
+    'APPROVED' => 'Đã phê duyệt',
+    'REJECTED' => 'Đã từ chối',
+    'FAILED' => 'Thất bại',
+    _ => value,
+  };
+}
+
 class ErrorBanner extends StatelessWidget {
   const ErrorBanner({super.key, required this.message});
 
@@ -83,7 +123,7 @@ class StatusBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
-        status,
+        formatClientValue(status),
         style: TextStyle(
           color: foreground,
           fontSize: 11,

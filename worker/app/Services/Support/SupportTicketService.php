@@ -116,7 +116,7 @@ class SupportTicketService
 
             if ($ticket->status === SupportTicketStatus::Closed) {
                 throw ValidationException::withMessages([
-                    'ticket' => ['A closed ticket cannot receive new messages.'],
+                    'ticket' => ['Yêu cầu hỗ trợ đã đóng không thể nhận tin nhắn mới.'],
                 ]);
             }
 
@@ -195,7 +195,7 @@ class SupportTicketService
     ): TicketAttachment {
         $path = $file->store('support-tickets/'.$ticket->public_id, 'local');
         if ($path === false) {
-            throw new \RuntimeException('The support attachment could not be stored.');
+            throw new \RuntimeException('Không thể lưu tệp đính kèm hỗ trợ.');
         }
 
         try {

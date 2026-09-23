@@ -43,13 +43,13 @@ class RefundService
 
             if ($amount <= 0 || $amount > $remaining) {
                 throw ValidationException::withMessages([
-                    'amount' => ['Refund amount exceeds the remaining customer-paid amount.'],
+                    'amount' => ['Số tiền hoàn vượt quá số tiền khách hàng đã thanh toán còn lại.'],
                 ]);
             }
 
             if ($payment->method === PaymentMethod::Cash && empty($evidence)) {
                 throw ValidationException::withMessages([
-                    'evidence' => ['Cash refunds require manual evidence.'],
+                    'evidence' => ['Hoàn tiền mặt cần có bằng chứng thủ công.'],
                 ]);
             }
 

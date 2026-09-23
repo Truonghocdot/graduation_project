@@ -26,9 +26,13 @@ class VehicleTypeResource extends Resource
 
     protected static ?string $model = VehicleType::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Catalog';
+    protected static string|UnitEnum|null $navigationGroup = 'Danh mục';
 
-    protected static ?string $navigationLabel = 'Vehicle types';
+    protected static ?string $navigationLabel = 'Loại xe';
+
+    protected static ?string $modelLabel = 'loại xe';
+
+    protected static ?string $pluralModelLabel = 'loại xe';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
 

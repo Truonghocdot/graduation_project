@@ -30,7 +30,7 @@ class DriverLocationService
 
         if ($current !== null && ! $capturedAt->isAfter($current->last_location_at)) {
             throw ValidationException::withMessages([
-                'captured_at' => ['The location sample is older than the current snapshot.'],
+                'captured_at' => ['Mẫu vị trí cũ hơn dữ liệu vị trí hiện tại.'],
             ]);
         }
 

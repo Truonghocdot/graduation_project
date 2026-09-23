@@ -20,7 +20,11 @@ class RatingResource extends Resource
 {
     protected static ?string $model = Rating::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Support';
+    protected static string|UnitEnum|null $navigationGroup = 'Hỗ trợ';
+
+    protected static ?string $modelLabel = 'đánh giá';
+
+    protected static ?string $pluralModelLabel = 'đánh giá';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedStar;
 

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Payments\Tables;
 
+use App\Enums\PaymentMethod;
 use App\Enums\PaymentStatus;
 use App\Models\Payment;
 use App\Models\User;
@@ -22,9 +23,9 @@ class PaymentsTable
         return $table
             ->defaultSort('created_at', 'desc')
             ->columns([
-                TextColumn::make('public_id')->label('Payment ID')->copyable(),
-                TextColumn::make('serviceRequest.public_id')->label('Request')->copyable(),
-                TextColumn::make('payer.name')->label('Payer')->searchable(),
+                TextColumn::make('public_id')->label('Mã thanh toán')->copyable(),
+                TextColumn::make('serviceRequest.public_id')->label('Yêu cầu')->copyable(),
+                TextColumn::make('payer.name')->label('Người thanh toán')->searchable(),
                 TextColumn::make('method')->badge(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('gross_fare')->money('VND'),
@@ -33,9 +34,11 @@ class PaymentsTable
                 TextColumn::make('updated_at')->dateTime(),
             ])
             ->filters([
-                SelectFilter::make('method')->options(['WALLET' => 'WALLET', 'CASH' => 'CASH']),
+                SelectFilter::make('method')->options(collect(PaymentMethod::cases())->mapWithKeys(
+                    fn (PaymentMethod $method): array => [$method->value => $method->getLabel()],
+                )->all()),
                 SelectFilter::make('status')->options(collect(PaymentStatus::cases())->mapWithKeys(
-                    fn (PaymentStatus $status): array => [$status->value => $status->value],
+                    fn (PaymentStatus $status): array => [$status->value => $status->getLabel()],
                 )->all()),
             ])
             ->recordActions([
@@ -46,7 +49,7 @@ class PaymentsTable
                         TextInput::make('amount')->numeric()->minValue(1)->required(),
                         TextInput::make('reason_code')->required()->maxLength(50),
                         Textarea::make('evidence')
-                            ->label('Cash evidence JSON')
+                            ->label('Dữ liệu JSON bằng chứng tiền mặt')
                             ->json()
                             ->rows(4),
                     ])
@@ -69,7 +72,7 @@ class PaymentsTable
                             $data['reason_code'],
                             $evidence,
                         );
-                        Notification::make()->title('Refund completed')->success()->send();
+                        Notification::make()->title('Đã hoàn tiền')->success()->send();
                     }),
             ])
             ->toolbarActions([]);

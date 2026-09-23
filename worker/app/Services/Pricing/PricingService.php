@@ -34,7 +34,7 @@ class PricingService
 
         if ($rule === null) {
             throw ValidationException::withMessages([
-                'vehicle_type_id' => ['No active pricing rule is available for this service and vehicle.'],
+                'vehicle_type_id' => ['Không có quy tắc giá đang hoạt động cho dịch vụ và loại xe này.'],
             ]);
         }
 

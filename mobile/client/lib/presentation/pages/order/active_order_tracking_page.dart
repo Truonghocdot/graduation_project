@@ -61,7 +61,7 @@ class ActiveOrderTrackingPage extends StatelessWidget {
                             const SizedBox(height: 8),
                             Text(
                               '${request.customerPayable.toStringAsFixed(0)} VND · '
-                              '${request.paymentMethod.apiValue}',
+                              '${formatClientValue(request.paymentMethod.apiValue)}',
                             ),
                           ],
                         ),

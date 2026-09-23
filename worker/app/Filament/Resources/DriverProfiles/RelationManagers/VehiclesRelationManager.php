@@ -11,20 +11,20 @@ class VehiclesRelationManager extends RelationManager
 {
     protected static string $relationship = 'vehicles';
 
-    protected static ?string $title = 'Vehicles';
+    protected static ?string $title = 'Xe';
 
     public function table(Table $table): Table
     {
         return $table
             ->recordTitleAttribute('plate_number')
             ->columns([
-                TextColumn::make('vehicleType.name')->label('Type'),
-                TextColumn::make('plate_number')->label('Plate')->searchable(),
+                TextColumn::make('vehicleType.name')->label('Loại xe'),
+                TextColumn::make('plate_number')->label('Biển số')->searchable(),
                 TextColumn::make('brand'),
                 TextColumn::make('model'),
                 TextColumn::make('color'),
                 TextColumn::make('status')->badge(),
-                IconColumn::make('is_selected')->label('Selected')->boolean(),
+                IconColumn::make('is_selected')->label('Được chọn')->boolean(),
             ])
             ->recordActions([])
             ->toolbarActions([]);

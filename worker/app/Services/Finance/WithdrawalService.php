@@ -65,14 +65,14 @@ class WithdrawalService
 
             if ($amount < $minimum || $amount > $maximum) {
                 throw ValidationException::withMessages([
-                    'amount' => ['The withdrawal amount is outside the configured limits.'],
+                    'amount' => ['Số tiền rút nằm ngoài hạn mức đã cấu hình.'],
                 ]);
             }
 
             if ($wallet->balance < 0
                 || $wallet->balance - $wallet->reserved_withdrawal_amount < $amount) {
                 throw ValidationException::withMessages([
-                    'amount' => ['The wallet does not have enough available balance.'],
+                    'amount' => ['Ví không có đủ số dư khả dụng.'],
                 ]);
             }
 
@@ -124,7 +124,7 @@ class WithdrawalService
             if ($wallet->reserved_withdrawal_amount < $request->amount
                 || $wallet->balance < $request->amount) {
                 throw ValidationException::withMessages([
-                    'withdrawal' => ['The wallet reservation is no longer valid.'],
+                    'withdrawal' => ['Khoản giữ chỗ trong ví không còn hợp lệ.'],
                 ]);
             }
 
@@ -208,7 +208,7 @@ class WithdrawalService
     private function invalidState(): never
     {
         throw ValidationException::withMessages([
-            'withdrawal' => ['The withdrawal cannot be handled in its current state.'],
+            'withdrawal' => ['Không thể xử lý yêu cầu rút tiền ở trạng thái hiện tại.'],
         ]);
     }
 

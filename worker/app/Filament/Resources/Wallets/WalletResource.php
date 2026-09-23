@@ -23,7 +23,11 @@ class WalletResource extends Resource
 
     protected static ?string $model = Wallet::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Finance';
+    protected static string|UnitEnum|null $navigationGroup = 'Tài chính';
+
+    protected static ?string $modelLabel = 'ví';
+
+    protected static ?string $pluralModelLabel = 'ví';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedWallet;
 

@@ -131,7 +131,7 @@ class QuoteService
         if ($serviceType === ServiceType::Drive
             && $vehicleType->passenger_capacity !== null
             && (int) $payload['passenger_count'] > $vehicleType->passenger_capacity) {
-            $errors['service_payload.passenger_count'][] = 'Passenger count exceeds vehicle capacity.';
+            $errors['service_payload.passenger_count'][] = 'Số hành khách vượt quá sức chứa của loại xe.';
         }
 
         if ($serviceType === ServiceType::Delivery) {
@@ -144,7 +144,7 @@ class QuoteService
 
             foreach ($limits as $field => $limit) {
                 if ($limit !== null && isset($payload[$field]) && (float) $payload[$field] > $limit) {
-                    $errors["service_payload.{$field}"][] = "The value exceeds this vehicle's limit.";
+                    $errors["service_payload.{$field}"][] = 'Giá trị vượt quá giới hạn của loại xe này.';
                 }
             }
         }

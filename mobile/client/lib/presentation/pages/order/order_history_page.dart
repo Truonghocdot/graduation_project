@@ -95,7 +95,7 @@ class _OrderHistoryPageState extends State<OrderHistoryPage>
         ),
         title: Text(request.pickupAddress ?? request.id),
         subtitle: Text(
-          '${request.dropoffAddress ?? request.service.apiValue}\n'
+          '${request.dropoffAddress ?? formatClientValue(request.service.apiValue)}\n'
           '${request.customerPayable.toStringAsFixed(0)} VND',
         ),
         isThreeLine: true,

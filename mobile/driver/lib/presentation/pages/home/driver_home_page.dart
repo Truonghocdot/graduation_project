@@ -145,7 +145,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
                         ? Icons.inventory_2_outlined
                         : Icons.directions_car_outlined,
                   ),
-                  title: Text(offer.serviceType),
+                  title: Text(formatDriverValue(offer.serviceType)),
                   subtitle: Text(
                     '${(offer.pickupDistanceMeters / 1000).toStringAsFixed(1)} km · '
                     '${offer.estimatedEarning.toStringAsFixed(0)} VND',

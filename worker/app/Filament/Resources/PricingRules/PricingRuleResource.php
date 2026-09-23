@@ -26,9 +26,13 @@ class PricingRuleResource extends Resource
 
     protected static ?string $model = PricingRule::class;
 
-    protected static string|UnitEnum|null $navigationGroup = 'Pricing';
+    protected static string|UnitEnum|null $navigationGroup = 'Giá cước';
 
-    protected static ?string $navigationLabel = 'Pricing rules';
+    protected static ?string $navigationLabel = 'Quy tắc giá';
+
+    protected static ?string $modelLabel = 'quy tắc giá';
+
+    protected static ?string $pluralModelLabel = 'quy tắc giá';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
 

@@ -88,7 +88,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('request-uuid'), findsOneWidget);
-    expect(find.text('SEARCHING_DRIVER'), findsOneWidget);
+    expect(find.text('Đang tìm tài xế'), findsOneWidget);
     expect(gateway.createCalls, 1);
 
     await tester.ensureVisible(find.text('Hủy yêu cầu'));
@@ -97,7 +97,7 @@ void main() {
     await tester.tap(find.text('Xác nhận hủy'));
     await tester.pumpAndSettle();
 
-    expect(find.text('CANCELLED'), findsOneWidget);
+    expect(find.text('Đã hủy'), findsOneWidget);
     expect(gateway.cancelCalls, 1);
   });
 
@@ -122,7 +122,7 @@ void main() {
       await tester.tap(find.text('Dịch vụ đang theo dõi'));
       await tester.pumpAndSettle();
       expect(find.text('request-uuid'), findsOneWidget);
-      await tester.pageBack();
+      await tester.tap(find.byType(BackButton));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Tài khoản'));
       await tester.pumpAndSettle();
@@ -179,7 +179,7 @@ void main() {
     gateway.snapshotStatus = 'COMPLETED';
     realtime.reconnected();
     await tester.pumpAndSettle();
-    expect(find.text('COMPLETED'), findsOneWidget);
+    expect(find.text('Đã hoàn thành'), findsOneWidget);
     await tester.pumpWidget(const SizedBox());
   });
 }
