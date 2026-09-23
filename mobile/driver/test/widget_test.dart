@@ -1,9 +1,44 @@
 import 'package:driver/api/driver_api.dart';
 import 'package:driver/main.dart';
+import 'package:driver/presentation/pages/auth/driver_forgot_password_page.dart';
+import 'package:driver/presentation/pages/auth/driver_register_page.dart';
+import 'package:driver/presentation/pages/auth/driver_verification_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('opens separate pages for driver account actions', (
+    tester,
+  ) async {
+    final gateway = FakeDriverGateway();
+    await tester.pumpWidget(
+      DriverApp(
+        gateway: gateway,
+        initialSession: const DriverSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: '',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('driver-register-link')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DriverRegisterPage), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(DriverRegisterPage))).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('driver-verification-link')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DriverVerificationPage), findsOneWidget);
+
+    Navigator.of(tester.element(find.byType(DriverVerificationPage))).pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('driver-forgot-password-link')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DriverForgotPasswordPage), findsOneWidget);
+  });
+
   testWidgets('logs in lists and accepts an offer', (tester) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;

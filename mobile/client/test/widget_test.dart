@@ -3,10 +3,29 @@ import 'package:client/booking_app.dart';
 import 'package:client/api/session_store.dart';
 import 'package:client/api/booking_realtime.dart';
 import 'package:client/presentation/pages/order/create_order_page.dart';
+import 'package:client/presentation/pages/profile/notifications_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  testWidgets('notification bell opens the notification page', (tester) async {
+    await tester.pumpWidget(
+      BookingApp(
+        gateway: FakeBookingGateway(),
+        initialSession: const BookingSession(
+          baseUrl: 'http://localhost/api/v1',
+          token: 'test-token',
+          vehicleTypeId: 'vehicle-uuid',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('customer-notifications-button')));
+    await tester.pumpAndSettle();
+    expect(find.byType(NotificationsPage), findsOneWidget);
+  });
+
   testWidgets('logs in and loads the vehicle catalog', (tester) async {
     final gateway = FakeBookingGateway();
     await tester.pumpWidget(

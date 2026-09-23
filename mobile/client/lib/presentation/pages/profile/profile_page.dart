@@ -10,6 +10,7 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final account = controller.customerProfile;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -27,15 +28,24 @@ class ProfilePage extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Tài khoản khách hàng',
-                        style: TextStyle(fontWeight: FontWeight.w700),
+                        account?.name ?? 'Tài khoản khách hàng',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
-                      Text('Giao hàng & Đặt xe'),
+                      const SizedBox(height: 2),
+                      Text(account?.phone ?? 'Số điện thoại chưa cập nhật'),
+                      if (account?.email?.isNotEmpty ?? false)
+                        Text(
+                          account!.email!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                     ],
                   ),
                 ),
@@ -173,7 +183,7 @@ class ProfilePage extends StatelessWidget {
         ),
       ),
     );
-    amount.dispose();
+    await disposeTextControllerAfterRoute(amount);
   }
 
   Future<void> _notifications(BuildContext context) async {
@@ -297,6 +307,6 @@ class ProfilePage extends StatelessWidget {
         ],
       ),
     );
-    reply.dispose();
+    await disposeTextControllerAfterRoute(reply);
   }
 }

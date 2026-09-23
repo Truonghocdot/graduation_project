@@ -314,6 +314,29 @@ class AppNotificationSummary {
   }
 }
 
+class CustomerProfileSummary {
+  const CustomerProfileSummary({
+    required this.id,
+    required this.name,
+    required this.phone,
+    this.email,
+  });
+
+  final String id;
+  final String name;
+  final String phone;
+  final String? email;
+
+  factory CustomerProfileSummary.fromJson(Map<String, dynamic> json) {
+    return CustomerProfileSummary(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      phone: json['phone'] as String,
+      email: json['email']?.toString(),
+    );
+  }
+}
+
 class SupportTicketSummary {
   const SupportTicketSummary({
     required this.id,
@@ -365,7 +388,7 @@ abstract interface class CustomerAccountGateway {
     required String resetToken,
     required String password,
   });
-  Future<void> validateSession(BookingSession session);
+  Future<CustomerProfileSummary> validateSession(BookingSession session);
   Future<void> logout(BookingSession session);
 }
 
@@ -405,6 +428,7 @@ abstract interface class BookingSupportGateway {
   Future<List<AppNotificationSummary>> loadNotifications(
     BookingSession session,
   );
+  Future<int> loadUnreadNotificationCount(BookingSession session);
 
   Future<void> markNotificationRead(
     BookingSession session,
@@ -607,12 +631,14 @@ class BookingApi
   }
 
   @override
-  Future<void> validateSession(BookingSession session) async {
-    _data(
-      await _transport.send(
-        method: 'GET',
-        uri: _uri(session, '/me'),
-        token: session.token,
+  Future<CustomerProfileSummary> validateSession(BookingSession session) async {
+    return CustomerProfileSummary.fromJson(
+      _data(
+        await _transport.send(
+          method: 'GET',
+          uri: _uri(session, '/me'),
+          token: session.token,
+        ),
       ),
     );
   }
@@ -907,6 +933,22 @@ class BookingApi
     return _listData(response)
         .map(AppNotificationSummary.fromJson)
         .toList(growable: false);
+  }
+
+  @override
+  Future<int> loadUnreadNotificationCount(BookingSession session) async {
+    final data = _data(
+      await _transport.send(
+        method: 'GET',
+        uri: _uri(session, '/notifications/unread'),
+        token: session.token,
+      ),
+    );
+    final count = data['unread_count'];
+    if (count is num) return count.toInt();
+    throw const BookingApiException(
+      'Phản hồi số thông báo chưa đọc không hợp lệ.',
+    );
   }
 
   @override

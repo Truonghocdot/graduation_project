@@ -12,7 +12,7 @@ trait RequiresIdempotencyKey
 
         if ($key === '' || mb_strlen($key) > 191) {
             throw ValidationException::withMessages([
-                'idempotency_key' => ['A valid Idempotency-Key header is required.'],
+                'idempotency_key' => ['Header Idempotency-Key hợp lệ là bắt buộc.'],
             ]);
         }
 

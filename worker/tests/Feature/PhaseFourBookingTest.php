@@ -232,7 +232,11 @@ test('rejects another user from using a quote and requires an idempotency key', 
     Sanctum::actingAs($setup['user'], ['customer:*']);
     $this->postJson('/api/v1/delivery/orders', phaseFourDeliveryPayload($setup['quote']))
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('idempotency_key');
+        ->assertJsonValidationErrors('idempotency_key')
+        ->assertJsonPath(
+            'errors.idempotency_key.0',
+            'Header Idempotency-Key hợp lệ là bắt buộc.',
+        );
 });
 
 test('does not allow cancellation after the request has moved outside pre-assignment states', function () {

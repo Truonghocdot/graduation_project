@@ -12,6 +12,7 @@ use App\Models\DriverProfile;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleType;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -88,6 +89,12 @@ class DriverOnboardingService
             ]);
         }
 
+        $documentNumber = filled($attributes['document_number'] ?? null)
+            ? mb_strtoupper(trim((string) $attributes['document_number']))
+            : null;
+
+        $this->ensureDocumentNumberIsAvailable($profile, $documentType, $documentNumber);
+
         $path = Storage::disk('local')->putFile(
             "drivers/{$profile->public_id}/documents",
             $file,
@@ -98,21 +105,93 @@ class DriverOnboardingService
         }
 
         try {
-            return DriverDocument::query()->create([
-                'driver_profile_id' => $profile->id,
-                'vehicle_id' => $vehicle?->id,
-                'document_type' => $documentType,
-                'document_number' => filled($attributes['document_number'] ?? null)
-                    ? mb_strtoupper(trim((string) $attributes['document_number']))
-                    : null,
-                'file_path' => $path,
-                'expires_at' => $attributes['expires_at'] ?? null,
-                'status' => ReviewableStatus::Pending,
-            ])->load('vehicle');
+            [$document, $previousPath] = DB::transaction(function () use (
+                $profile,
+                $documentType,
+                $vehicle,
+                $documentNumber,
+                $attributes,
+                $path,
+            ): array {
+                $existing = $profile->documents()
+                    ->where('document_type', $documentType->value)
+                    ->when(
+                        $vehicle === null,
+                        fn ($query) => $query->whereNull('vehicle_id'),
+                        fn ($query) => $query->where('vehicle_id', $vehicle->id),
+                    )
+                    ->latest('id')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($existing !== null) {
+                    $previousPath = $existing->file_path;
+                    $existing->fill([
+                        'document_number' => $documentNumber,
+                        'file_path' => $path,
+                        'expires_at' => $attributes['expires_at'] ?? null,
+                        'status' => ReviewableStatus::Pending,
+                        'reviewed_by' => null,
+                        'reviewed_at' => null,
+                    ])->save();
+
+                    return [$existing->load('vehicle'), $previousPath];
+                }
+
+                $document = DriverDocument::query()->create([
+                    'driver_profile_id' => $profile->id,
+                    'vehicle_id' => $vehicle?->id,
+                    'document_type' => $documentType,
+                    'document_number' => $documentNumber,
+                    'file_path' => $path,
+                    'expires_at' => $attributes['expires_at'] ?? null,
+                    'status' => ReviewableStatus::Pending,
+                ])->load('vehicle');
+
+                return [$document, null];
+            });
+        } catch (UniqueConstraintViolationException $exception) {
+            Storage::disk('local')->delete($path);
+
+            throw ValidationException::withMessages([
+                'document_number' => ['So giay to nay da duoc dung boi mot ho so tai xe khac.'],
+            ]);
         } catch (\Throwable $exception) {
             Storage::disk('local')->delete($path);
 
             throw $exception;
+        }
+
+        if ($previousPath !== null && $previousPath !== $path) {
+            Storage::disk('local')->delete($previousPath);
+        }
+
+        return $document;
+    }
+
+    private function ensureDocumentNumberIsAvailable(
+        DriverProfile $profile,
+        DriverDocumentType $documentType,
+        ?string $documentNumber,
+    ): void {
+        if ($documentNumber === null) {
+            return;
+        }
+
+        $usedByAnotherProfile = DriverDocument::query()
+            ->where('document_type', $documentType->value)
+            ->where('document_number', $documentNumber)
+            ->whereIn('status', [
+                ReviewableStatus::Pending->value,
+                ReviewableStatus::Approved->value,
+            ])
+            ->where('driver_profile_id', '<>', $profile->id)
+            ->exists();
+
+        if ($usedByAnotherProfile) {
+            throw ValidationException::withMessages([
+                'document_number' => ['So giay to nay da duoc dung boi mot ho so tai xe khac.'],
+            ]);
         }
     }
 

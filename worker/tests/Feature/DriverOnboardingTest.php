@@ -96,6 +96,57 @@ test('rejects submission when required documents are missing', function () {
         ->assertJsonValidationErrors('documents');
 });
 
+test('replaces a document when its owner uploads the same type again', function () {
+    Storage::fake('local');
+    $user = User::factory()->create();
+    Sanctum::actingAs($user, ['customer:*']);
+    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+
+    $this->post('/api/v1/driver/documents', [
+        'document_type' => DriverDocumentType::Identity->value,
+        'document_number' => '038205007820',
+        'file' => UploadedFile::fake()->image('identity-first.jpg'),
+    ], ['Accept' => 'application/json'])->assertCreated();
+    $firstPath = DriverDocument::query()->sole()->file_path;
+
+    $this->post('/api/v1/driver/documents', [
+        'document_type' => DriverDocumentType::Identity->value,
+        'document_number' => '038205007820',
+        'file' => UploadedFile::fake()->image('identity-replacement.jpg'),
+    ], ['Accept' => 'application/json'])->assertOk();
+
+    $document = DriverDocument::query()->sole();
+    expect($document->document_number)->toBe('038205007820')
+        ->and($document->file_path)->not->toBe($firstPath);
+    Storage::disk('local')->assertMissing($firstPath);
+});
+
+test('rejects a document number already used by another active driver profile', function () {
+    Storage::fake('local');
+    $owner = User::factory()->create();
+    Sanctum::actingAs($owner, ['customer:*']);
+    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+    $this->post('/api/v1/driver/documents', [
+        'document_type' => DriverDocumentType::Identity->value,
+        'document_number' => '038205007820',
+        'file' => UploadedFile::fake()->image('owner-identity.jpg'),
+    ], ['Accept' => 'application/json'])->assertCreated();
+
+    $otherUser = User::factory()->create();
+    Sanctum::actingAs($otherUser, ['customer:*']);
+    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+
+    $this->post('/api/v1/driver/documents', [
+        'document_type' => DriverDocumentType::Identity->value,
+        'document_number' => '038205007820',
+        'file' => UploadedFile::fake()->image('other-identity.jpg'),
+    ], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('document_number');
+
+    $this->assertDatabaseCount('driver_documents', 1);
+});
+
 test('prevents another user from deleting a driver document', function () {
     Storage::fake('local');
     $owner = User::factory()->create();

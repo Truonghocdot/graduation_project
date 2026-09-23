@@ -87,6 +87,24 @@ void main() {
     },
   );
 
+  test(
+    'loads the customer profile and exact unread notification count',
+    () async {
+      final transport = CustomerTransport();
+      final api = BookingApi(transport: transport);
+
+      final profile = await api.validateSession(session);
+      final unreadCount = await api.loadUnreadNotificationCount(session);
+
+      expect(profile.name, 'Customer');
+      expect(profile.phone, '0901234567');
+      expect(profile.email, 'customer@example.test');
+      expect(unreadCount, 3);
+      expect(transport.calls[0].uri.path, '/api/v1/me');
+      expect(transport.calls[1].uri.path, '/api/v1/notifications/unread');
+    },
+  );
+
   test('parses the customer order history read model', () async {
     final api = BookingApi(transport: CustomerTransport());
     final history = await api.loadServiceRequests(session);
@@ -194,6 +212,27 @@ class CustomerTransport implements ApiTransport {
     if (uri.path.endsWith('/auth/logout') ||
         uri.path.endsWith('/auth/password/reset')) {
       return const ApiResponse(statusCode: 204, body: {});
+    }
+    if (uri.path.endsWith('/me')) {
+      return const ApiResponse(
+        statusCode: 200,
+        body: {
+          'data': {
+            'id': 'customer-1',
+            'name': 'Customer',
+            'phone': '0901234567',
+            'email': 'customer@example.test',
+          },
+        },
+      );
+    }
+    if (uri.path.endsWith('/notifications/unread')) {
+      return const ApiResponse(
+        statusCode: 200,
+        body: {
+          'data': {'unread_count': 3},
+        },
+      );
     }
     if (uri.path.endsWith('/support/tickets')) {
       return const ApiResponse(

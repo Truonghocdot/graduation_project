@@ -365,8 +365,10 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
         description: body.text.trim(),
       );
     }
-    subject.dispose();
-    body.dispose();
+    await Future.wait([
+      disposeTextControllerAfterRoute(subject),
+      disposeTextControllerAfterRoute(body),
+    ]);
   }
 }
 

@@ -168,8 +168,10 @@ class _WalletPageState extends State<WalletPage> {
         accountName: name.text.trim(),
       );
     }
-    bank.dispose();
-    number.dispose();
-    name.dispose();
+    await Future.wait([
+      disposeTextControllerAfterRoute(bank),
+      disposeTextControllerAfterRoute(number),
+      disposeTextControllerAfterRoute(name),
+    ]);
   }
 }

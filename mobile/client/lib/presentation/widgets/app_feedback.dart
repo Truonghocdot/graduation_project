@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 
+Future<void> disposeTextControllerAfterRoute(
+  TextEditingController controller,
+) async {
+  await Future<void>.delayed(const Duration(milliseconds: 250));
+  controller.dispose();
+}
+
 String formatClientValue(String value) {
   return switch (value) {
     'DELIVERY' => 'Giao hàng',

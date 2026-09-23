@@ -31,7 +31,9 @@ class ClientAppController extends ChangeNotifier {
   QuoteSummary? quote;
   ServiceRequestSummary? activeRequest;
   WalletSummary? wallet;
+  CustomerProfileSummary? customerProfile;
   List<AppNotificationSummary> notifications = const [];
+  int unreadNotificationCount = 0;
   List<SupportTicketSummary> tickets = const [];
   bool initializing = true;
   bool busy = false;
@@ -92,7 +94,7 @@ class ClientAppController extends ChangeNotifier {
       return;
     }
     await _guard(() async {
-      await accountGateway?.validateSession(_session);
+      customerProfile = await accountGateway?.validateSession(_session);
       await _loadCatalog();
       await _loadHistory();
       final lastId = await sessionStore?.readLastRequestId();
@@ -106,6 +108,7 @@ class ClientAppController extends ChangeNotifier {
       _startRealtime();
       _startPolling();
     }, showBusy: false);
+    if (authenticated) unawaited(loadNotifications());
     initializing = false;
     notifyListeners();
   }
@@ -119,11 +122,13 @@ class ClientAppController extends ChangeNotifier {
       );
       _session = _session.copyWith(token: token, vehicleTypeId: '');
       await sessionStore?.writeToken(token);
+      customerProfile = await accountGateway?.validateSession(_session);
       await _loadCatalog();
       await _loadHistory();
       _startRealtime();
       _startPolling();
     });
+    if (authenticated) unawaited(loadNotifications());
   }
 
   Future<void> register({
@@ -163,11 +168,13 @@ class ClientAppController extends ChangeNotifier {
       );
       _session = _session.copyWith(token: token, vehicleTypeId: '');
       await sessionStore?.writeToken(token);
+      customerProfile = await accountGateway?.validateSession(_session);
       await _loadCatalog();
       await _loadHistory();
       _startRealtime();
       _startPolling();
     });
+    if (authenticated) unawaited(loadNotifications());
   }
 
   Future<void> resetPassword({
@@ -309,6 +316,9 @@ class ClientAppController extends ChangeNotifier {
     if (support == null) return;
     await _guard(() async {
       notifications = await support.loadNotifications(_session);
+      unreadNotificationCount = await support.loadUnreadNotificationCount(
+        _session,
+      );
     });
   }
 
@@ -318,6 +328,9 @@ class ClientAppController extends ChangeNotifier {
     await _guard(() async {
       await support.markNotificationRead(_session, id);
       notifications = await support.loadNotifications(_session);
+      unreadNotificationCount = await support.loadUnreadNotificationCount(
+        _session,
+      );
     });
   }
 
@@ -347,7 +360,9 @@ class ClientAppController extends ChangeNotifier {
     quote = null;
     activeRequest = null;
     wallet = null;
+    customerProfile = null;
     notifications = const [];
+    unreadNotificationCount = 0;
     tickets = const [];
     notifyListeners();
   }

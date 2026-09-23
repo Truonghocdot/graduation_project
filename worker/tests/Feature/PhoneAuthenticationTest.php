@@ -36,6 +36,19 @@ test('registers a pending user and stores only the OTP hash', function () {
         ->and(Hash::check('123456', $verification->code_hash))->toBeTrue();
 });
 
+test('returns Vietnamese validation messages for API form requests', function () {
+    $this->postJson('/api/v1/auth/register', [
+        'phone' => 'not-a-phone-number',
+        'email' => 'not-an-email',
+        'password' => 'short',
+        'password_confirmation' => 'different',
+    ])->assertUnprocessable()
+        ->assertJsonPath('errors.name.0', 'Trường họ và tên là bắt buộc.')
+        ->assertJsonPath('errors.phone.0', 'Số điện thoại phải là số điện thoại Việt Nam hợp lệ.')
+        ->assertJsonPath('errors.email.0', 'Trường email phải là địa chỉ email hợp lệ.')
+        ->assertJsonPath('errors.password.0', 'Xác nhận mật khẩu không khớp.');
+});
+
 test('verifies the phone and creates an authenticated customer session', function () {
     $this->postJson('/api/v1/auth/register', [
         'name' => 'Nguyen Van A',

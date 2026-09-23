@@ -136,7 +136,7 @@ class _DriverHistoryPageState extends State<DriverHistoryPage> {
         comment: comment.text,
       );
     }
-    comment.dispose();
+    await disposeTextControllerAfterRoute(comment);
   }
 }
 

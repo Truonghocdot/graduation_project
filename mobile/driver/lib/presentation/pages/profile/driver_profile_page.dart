@@ -263,6 +263,6 @@ class DriverProfilePage extends StatelessWidget {
         ],
       ),
     );
-    reply.dispose();
+    await disposeTextControllerAfterRoute(reply);
   }
 }

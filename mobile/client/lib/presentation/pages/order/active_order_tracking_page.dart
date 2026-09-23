@@ -218,8 +218,10 @@ class ActiveOrderTrackingPage extends StatelessWidget {
         description: body.text.trim(),
       );
     }
-    subject.dispose();
-    body.dispose();
+    await Future.wait([
+      disposeTextControllerAfterRoute(subject),
+      disposeTextControllerAfterRoute(body),
+    ]);
   }
 
   Future<void> _sos(BuildContext context, ServiceRequestSummary request) async {

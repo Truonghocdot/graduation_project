@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -19,6 +21,7 @@ class _DriverKycPageState extends State<DriverKycPage> {
   String? vehicleTypeId;
   String? vehicleId;
   String documentType = 'IDENTITY';
+  final pendingDocuments = <_PendingDriverDocument>[];
 
   static const documentTypes = [
     'IDENTITY',
@@ -234,10 +237,27 @@ class _DriverKycPageState extends State<DriverKycPage> {
                   ],
                   const SizedBox(height: 8),
                   OutlinedButton.icon(
-                    onPressed: state.busy ? null : _uploadDocument,
+                    onPressed: state.busy ? null : _selectDocument,
                     icon: const Icon(Icons.attach_file),
                     label: const Text('Chọn tệp giấy tờ'),
                   ),
+                  if (pendingDocuments.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text(
+                      'Giấy tờ đã chọn',
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 8),
+                    for (final document in pendingDocuments)
+                      _PendingDocumentPreview(
+                        document: document,
+                        onRemove: state.busy
+                            ? null
+                            : () => setState(
+                                () => pendingDocuments.remove(document),
+                              ),
+                      ),
+                  ],
                   const SizedBox(height: 24),
                   Text(
                     '4. Dịch vụ đăng ký',
@@ -310,7 +330,7 @@ class _DriverKycPageState extends State<DriverKycPage> {
     await widget.controller.createVehicle(vehicleTypeId!, plate.text.trim());
   }
 
-  Future<void> _uploadDocument() async {
+  Future<void> _selectDocument() async {
     if (_vehicleDocument && vehicleId == null) return;
     final file = await FilePicker.pickFile(
       type: FileType.custom,
@@ -319,18 +339,110 @@ class _DriverKycPageState extends State<DriverKycPage> {
     if (file == null) return;
     final size = file.lengthSync() ?? await file.length();
     if (size == null || size > 5 * 1024 * 1024) return;
-    await widget.controller.uploadDocument(
+    final document = _PendingDriverDocument(
       type: documentType,
       name: file.name,
       bytes: await file.readAsBytes(),
       number: documentNumber.text.trim(),
       vehicleId: _vehicleDocument ? vehicleId : null,
     );
+    final currentIndex = pendingDocuments.indexWhere(
+      (pending) =>
+          pending.type == document.type &&
+          pending.vehicleId == document.vehicleId,
+    );
+
+    if (!mounted) return;
+    setState(() {
+      if (currentIndex == -1) {
+        pendingDocuments.add(document);
+      } else {
+        pendingDocuments[currentIndex] = document;
+      }
+    });
   }
 
   Future<void> _submit() async {
-    if (vehicleId != null) {
-      await widget.controller.submitApplication(vehicleId!);
+    final selectedVehicleId = vehicleId;
+    if (selectedVehicleId == null) return;
+
+    for (final document in List<_PendingDriverDocument>.of(pendingDocuments)) {
+      await widget.controller.uploadDocument(
+        type: document.type,
+        name: document.name,
+        bytes: document.bytes,
+        number: document.number,
+        vehicleId: document.vehicleId,
+      );
+      if (widget.controller.error != null || !mounted) return;
+      setState(() => pendingDocuments.remove(document));
     }
+
+    await widget.controller.submitApplication(selectedVehicleId);
+  }
+}
+
+class _PendingDriverDocument {
+  const _PendingDriverDocument({
+    required this.type,
+    required this.name,
+    required this.bytes,
+    required this.number,
+    required this.vehicleId,
+  });
+
+  final String type;
+  final String name;
+  final Uint8List bytes;
+  final String number;
+  final String? vehicleId;
+
+  bool get isPdf => name.toLowerCase().endsWith('.pdf');
+}
+
+class _PendingDocumentPreview extends StatelessWidget {
+  const _PendingDocumentPreview({required this.document, this.onRemove});
+
+  final _PendingDriverDocument document;
+  final VoidCallback? onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final subtitle = document.number.isEmpty
+        ? document.name
+        : '${document.name}\n${document.number}';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        leading: SizedBox(
+          width: 56,
+          height: 56,
+          child: document.isPdf
+              ? const Icon(Icons.picture_as_pdf_outlined, size: 32)
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.memory(
+                    document.bytes,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        const Icon(Icons.insert_drive_file_outlined),
+                  ),
+                ),
+        ),
+        title: Text(formatDriverValue(document.type)),
+        subtitle: Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: IconButton(
+          tooltip: 'Bỏ giấy tờ',
+          onPressed: onRemove,
+          icon: const Icon(Icons.close),
+        ),
+      ),
+    );
   }
 }

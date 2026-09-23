@@ -167,6 +167,7 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+    if (!mounted) return;
     if (confirmed == true) {
       await widget.controller.resetPassword(
         phone: phone.text.trim(),
@@ -174,7 +175,9 @@ class _LoginPageState extends State<LoginPage> {
         password: nextPassword.text,
       );
     }
-    code.dispose();
-    nextPassword.dispose();
+    await Future.wait([
+      disposeTextControllerAfterRoute(code),
+      disposeTextControllerAfterRoute(nextPassword),
+    ]);
   }
 }
