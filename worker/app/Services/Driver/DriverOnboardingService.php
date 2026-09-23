@@ -33,7 +33,7 @@ class DriverOnboardingService
         DriverDocumentType::VehiclePhoto,
     ];
 
-    public function saveDraft(User $user, float $codLimit): DriverProfile
+    public function saveDraft(User $user): DriverProfile
     {
         $profile = DriverProfile::query()->firstOrNew(['user_id' => $user->id]);
 
@@ -44,7 +44,6 @@ class DriverOnboardingService
         $profile->fill([
             'review_status' => DriverReviewStatus::Draft,
             'availability_status' => DriverAvailabilityStatus::Offline,
-            'cod_limit' => $codLimit,
             'review_reason_code' => null,
         ])->save();
 
@@ -212,20 +211,39 @@ class DriverOnboardingService
      */
     public function addVehicle(User $user, array $attributes): Vehicle
     {
-        $profile = $this->editableProfileFor($user);
-        $vehicleType = $this->vehicleType($attributes['vehicle_type_id']);
-        $hasVehicle = $profile->vehicles()->exists();
+        return DB::transaction(function () use ($user, $attributes): Vehicle {
+            $profile = DriverProfile::query()
+                ->whereBelongsTo($user)
+                ->lockForUpdate()
+                ->first();
 
-        return Vehicle::query()->create([
-            'driver_profile_id' => $profile->id,
-            'vehicle_type_id' => $vehicleType->id,
-            'plate_number' => $attributes['plate_number'],
-            'brand' => $attributes['brand'] ?? null,
-            'model' => $attributes['model'] ?? null,
-            'color' => $attributes['color'] ?? null,
-            'status' => ReviewableStatus::Pending,
-            'is_selected' => ! $hasVehicle,
-        ])->load(['vehicleType', 'documents']);
+            if ($profile === null) {
+                throw ValidationException::withMessages([
+                    'application' => ['Chưa bắt đầu hồ sơ đăng ký tài xế.'],
+                ]);
+            }
+            if (! $profile->isEditable()) {
+                $this->throwNotEditable();
+            }
+            if ($profile->vehicles()->exists()) {
+                throw ValidationException::withMessages([
+                    'vehicle_type_id' => ['Mỗi hồ sơ tài xế chỉ được đăng ký một phương tiện.'],
+                ]);
+            }
+
+            $vehicleType = $this->vehicleType($attributes['vehicle_type_id']);
+
+            return Vehicle::query()->create([
+                'driver_profile_id' => $profile->id,
+                'vehicle_type_id' => $vehicleType->id,
+                'plate_number' => $attributes['plate_number'],
+                'brand' => $attributes['brand'] ?? null,
+                'model' => $attributes['model'] ?? null,
+                'color' => $attributes['color'] ?? null,
+                'status' => ReviewableStatus::Pending,
+                'is_selected' => true,
+            ])->load(['vehicleType', 'documents']);
+        });
     }
 
     /**

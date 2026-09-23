@@ -38,7 +38,7 @@ void main() {
 
     expect(find.text('Trạng thái: Chưa tạo'), findsOneWidget);
     expect(find.text('Nhận chuyến'), findsNothing);
-    await tester.tap(find.text('Lưu hồ sơ'));
+    await tester.tap(find.text('Bắt đầu hồ sơ'));
     await tester.pumpAndSettle();
     expect(find.text('Trạng thái: Bản nháp'), findsOneWidget);
     expect(transport.draftSaved, isTrue);
@@ -60,6 +60,7 @@ void main() {
         initialSession: const DriverSession(
           baseUrl: 'http://localhost/api/v1',
           token: 'approved-token',
+          onboarding: true,
         ),
       ),
     );

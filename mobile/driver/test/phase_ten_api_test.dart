@@ -35,7 +35,7 @@ void main() {
       final api = DriverApi(transport: transport);
 
       expect(await api.loadApplication(session), isNull);
-      final profile = await api.saveApplication(session, 500000);
+      final profile = await api.saveApplication(session);
       final vehicleTypes = await api.loadVehicleTypes(session);
       await api.createVehicle(
         session: session,

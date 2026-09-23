@@ -42,10 +42,35 @@ class _DriverHomePageState extends State<DriverHomePage> {
         );
       });
     }
-    return RefreshIndicator(
+    final map = Positioned.fill(
+      child: DriverGoongMap(
+        height: double.infinity,
+        fullScreen: true,
+        mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
+        current: _coordinate(controller.currentPosition),
+        pickup: active == null
+            ? null
+            : NavigationCoordinate(
+                latitude: active.pickupLatitude,
+                longitude: active.pickupLongitude,
+              ),
+        dropoff: active == null
+            ? null
+            : NavigationCoordinate(
+                latitude: active.dropoffLatitude,
+                longitude: active.dropoffLongitude,
+              ),
+      ),
+    );
+    final controls = RefreshIndicator(
       onRefresh: controller.loadOffers,
       child: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 10, 16, 28),
+        padding: EdgeInsets.fromLTRB(
+          16,
+          MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
+          16,
+          28,
+        ),
         children: [
           Card(
             child: Padding(
@@ -95,24 +120,6 @@ class _DriverHomePageState extends State<DriverHomePage> {
               ),
             ),
           ],
-          const SizedBox(height: 14),
-          DriverGoongMap(
-            height: 210,
-            mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
-            current: _coordinate(controller.currentPosition),
-            pickup: active == null
-                ? null
-                : NavigationCoordinate(
-                    latitude: active.pickupLatitude,
-                    longitude: active.pickupLongitude,
-                  ),
-            dropoff: active == null
-                ? null
-                : NavigationCoordinate(
-                    latitude: active.dropoffLatitude,
-                    longitude: active.dropoffLongitude,
-                  ),
-          ),
           if (active != null) ...[
             const SizedBox(height: 14),
             FilledButton.icon(
@@ -165,6 +172,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
         ],
       ),
     );
+    return Stack(children: [map, controls]);
   }
 
   NavigationCoordinate? _coordinate(DriverPosition? position) {

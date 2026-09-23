@@ -20,9 +20,7 @@ test('submits a complete driver application with private documents', function ()
     $user = User::factory()->create();
     Sanctum::actingAs($user, ['customer:*']);
 
-    $this->postJson('/api/v1/driver/application', [
-        'cod_limit' => 1_000_000,
-    ])->assertCreated()
+    $this->postJson('/api/v1/driver/application')->assertCreated()
         ->assertJsonPath('data.review_status', DriverReviewStatus::Draft->value);
 
     $vehicleTypeId = VehicleType::query()->where('unique_key', 'MOTORBIKE')->value('public_id');
@@ -81,7 +79,7 @@ test('submits a complete driver application with private documents', function ()
 test('rejects submission when required documents are missing', function () {
     $user = User::factory()->create();
     Sanctum::actingAs($user, ['customer:*']);
-    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+    $this->postJson('/api/v1/driver/application')->assertCreated();
 
     $vehicleTypeId = VehicleType::query()->where('unique_key', 'MOTORBIKE')->value('public_id');
     $vehicleId = $this->postJson('/api/v1/driver/vehicles', [
@@ -100,7 +98,7 @@ test('replaces a document when its owner uploads the same type again', function 
     Storage::fake('local');
     $user = User::factory()->create();
     Sanctum::actingAs($user, ['customer:*']);
-    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+    $this->postJson('/api/v1/driver/application')->assertCreated();
 
     $this->post('/api/v1/driver/documents', [
         'document_type' => DriverDocumentType::Identity->value,
@@ -125,7 +123,7 @@ test('rejects a document number already used by another active driver profile', 
     Storage::fake('local');
     $owner = User::factory()->create();
     Sanctum::actingAs($owner, ['customer:*']);
-    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+    $this->postJson('/api/v1/driver/application')->assertCreated();
     $this->post('/api/v1/driver/documents', [
         'document_type' => DriverDocumentType::Identity->value,
         'document_number' => '038205007820',
@@ -134,7 +132,7 @@ test('rejects a document number already used by another active driver profile', 
 
     $otherUser = User::factory()->create();
     Sanctum::actingAs($otherUser, ['customer:*']);
-    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+    $this->postJson('/api/v1/driver/application')->assertCreated();
 
     $this->post('/api/v1/driver/documents', [
         'document_type' => DriverDocumentType::Identity->value,
@@ -151,7 +149,7 @@ test('prevents another user from deleting a driver document', function () {
     Storage::fake('local');
     $owner = User::factory()->create();
     Sanctum::actingAs($owner, ['customer:*']);
-    $this->postJson('/api/v1/driver/application', ['cod_limit' => 0])->assertCreated();
+    $this->postJson('/api/v1/driver/application')->assertCreated();
     $documentId = $this->post('/api/v1/driver/documents', [
         'document_type' => DriverDocumentType::Portrait->value,
         'file' => UploadedFile::fake()->image('portrait.jpg'),
@@ -166,4 +164,21 @@ test('prevents another user from deleting a driver document', function () {
         ->assertNotFound();
     $this->get("/api/v1/driver/documents/{$documentId}/file")
         ->assertNotFound();
+});
+
+test('allows only one vehicle during driver onboarding', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user, ['customer:*']);
+    $this->postJson('/api/v1/driver/application')->assertCreated();
+    $vehicleTypeId = VehicleType::query()->where('unique_key', 'MOTORBIKE')->value('public_id');
+
+    $this->postJson('/api/v1/driver/vehicles', [
+        'vehicle_type_id' => $vehicleTypeId,
+        'plate_number' => '59A112345',
+    ])->assertCreated();
+    $this->postJson('/api/v1/driver/vehicles', [
+        'vehicle_type_id' => $vehicleTypeId,
+        'plate_number' => '59A167890',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('vehicle_type_id');
 });

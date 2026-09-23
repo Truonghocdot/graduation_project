@@ -13,6 +13,7 @@ use App\Models\DriverProfile;
 use App\Models\OutboxEvent;
 use App\Models\ServiceRequest;
 use App\Models\ServiceStatusHistory;
+use App\Services\Finance\DriverDailyCodLimitService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -20,7 +21,10 @@ use Illuminate\Validation\ValidationException;
 
 class DriverMatchingService
 {
-    public function __construct(private readonly DriverPresenceStore $presenceStore) {}
+    public function __construct(
+        private readonly DriverPresenceStore $presenceStore,
+        private readonly DriverDailyCodLimitService $dailyCodLimit,
+    ) {}
 
     /** @return Collection<int, DriverOffer> */
     public function dispatch(ServiceRequest $serviceRequest): Collection
@@ -208,6 +212,6 @@ class DriverMatchingService
             ? 0
             : (float) $request->deliveryOrder->cod_amount;
 
-        return $codAmount <= $profile->cod_limit;
+        return $this->dailyCodLimit->canAdvance($profile, $codAmount);
     }
 }

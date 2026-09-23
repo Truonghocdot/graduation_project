@@ -20,7 +20,7 @@ class ApplicationController extends Controller
         DriverOnboardingService $onboarding,
     ): DriverProfileResource {
         return DriverProfileResource::make(
-            $onboarding->saveDraft($request->user(), $request->float('cod_limit')),
+            $onboarding->saveDraft($request->user()),
         );
     }
 }

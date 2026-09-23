@@ -18,7 +18,10 @@ class DriverProfileInfolist
                 TextEntry::make('review_status')->badge(),
                 TextEntry::make('availability_status')->badge(),
                 TextEntry::make('review_reason_code')->label('Lý do xét duyệt')->placeholder('Không có'),
-                TextEntry::make('cod_limit')->numeric(decimalPlaces: 0)->suffix(' VND'),
+                TextEntry::make('cod_limit')
+                    ->label('Hạn mức ứng COD mỗi ngày')
+                    ->numeric(decimalPlaces: 0)
+                    ->suffix(' VND'),
                 TextEntry::make('submitted_at')->dateTime(),
                 TextEntry::make('reviewed_at')->dateTime(),
                 RepeatableEntry::make('vehicles')

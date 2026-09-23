@@ -6,12 +6,15 @@ use App\Models\Assignment;
 use App\Models\CodAccount;
 use App\Models\CodTransaction;
 use App\Models\DeliveryOrder;
+use App\Models\DriverProfile;
 use App\Models\ServiceEvidence;
 use App\Models\User;
 use Illuminate\Validation\ValidationException;
 
 class CodService
 {
+    public function __construct(private readonly DriverDailyCodLimitService $dailyLimit) {}
+
     public function advance(
         DeliveryOrder $delivery,
         Assignment $assignment,
@@ -21,12 +24,6 @@ class CodService
     ): ?CodAccount {
         if (! $delivery->is_cod || $delivery->cod_amount <= 0) {
             return null;
-        }
-
-        if ($delivery->cod_amount > $assignment->driverProfile->cod_limit) {
-            throw ValidationException::withMessages([
-                'cod_amount' => ['Số tiền COD vượt quá hạn mức của tài xế.'],
-            ]);
         }
 
         $account = CodAccount::query()->firstOrCreate(
@@ -45,6 +42,16 @@ class CodService
 
         if ($existing) {
             return $account;
+        }
+
+        $profile = DriverProfile::query()
+            ->lockForUpdate()
+            ->findOrFail($assignment->driver_profile_id);
+
+        if (! $this->dailyLimit->canAdvance($profile, (float) $delivery->cod_amount)) {
+            throw ValidationException::withMessages([
+                'cod_amount' => ['Số tiền COD vượt quá hạn mức ứng COD còn lại trong ngày của tài xế.'],
+            ]);
         }
 
         CodTransaction::query()->create([

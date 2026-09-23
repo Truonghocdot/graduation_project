@@ -102,6 +102,7 @@ class DriverProfile extends Model
     {
         return in_array($this->review_status, [
             DriverReviewStatus::Draft,
+            DriverReviewStatus::PendingReview,
             DriverReviewStatus::Rejected,
         ], true);
     }

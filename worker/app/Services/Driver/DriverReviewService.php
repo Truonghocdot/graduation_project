@@ -3,6 +3,7 @@
 namespace App\Services\Driver;
 
 use App\Enums\DriverAvailabilityStatus;
+use App\Enums\DriverDocumentType;
 use App\Enums\DriverReviewStatus;
 use App\Enums\ReviewableStatus;
 use App\Enums\RoleKey;
@@ -19,9 +20,26 @@ use LogicException;
 
 class DriverReviewService
 {
-    public function approve(DriverProfile $profile, User $admin): DriverProfile
-    {
-        return DB::transaction(function () use ($profile, $admin): DriverProfile {
+    private const PERSONAL_DOCUMENTS = [
+        DriverDocumentType::Identity,
+        DriverDocumentType::DriverLicense,
+        DriverDocumentType::Portrait,
+    ];
+
+    private const VEHICLE_DOCUMENTS = [
+        DriverDocumentType::VehicleRegistration,
+        DriverDocumentType::Insurance,
+        DriverDocumentType::VehiclePhoto,
+    ];
+
+    public function approve(
+        DriverProfile $profile,
+        User $admin,
+        ?float $dailyCodLimit = null,
+    ): DriverProfile {
+        $dailyCodLimit ??= (float) config('finance.driver_daily_cod_limit', 8_000_000);
+
+        return DB::transaction(function () use ($profile, $admin, $dailyCodLimit): DriverProfile {
             $profile = DriverProfile::query()->lockForUpdate()->findOrFail($profile->id);
             $before = $this->auditSnapshot($profile);
 
@@ -36,6 +54,8 @@ class DriverReviewService
                     'application' => ['Hồ sơ chưa có xe được chọn hoặc năng lực dịch vụ.'],
                 ]);
             }
+
+            $this->validateRequiredDocuments($profile, $selectedVehicle->id);
 
             if ($profile->documents()->whereDate('expires_at', '<', today())->exists()) {
                 throw ValidationException::withMessages([
@@ -65,6 +85,7 @@ class DriverReviewService
                 'review_reason_code' => null,
                 'reviewed_by' => $admin->id,
                 'reviewed_at' => now(),
+                'cod_limit' => $dailyCodLimit,
             ])->save();
 
             $this->grantDriverRole($profile->user_id, $admin->id);
@@ -184,7 +205,40 @@ class DriverReviewService
             'review_status' => $profile->review_status->value,
             'availability_status' => $profile->availability_status->value,
             'review_reason_code' => $profile->review_reason_code,
+            'cod_limit' => $profile->cod_limit,
         ];
+    }
+
+    private function validateRequiredDocuments(DriverProfile $profile, int $vehicleId): void
+    {
+        $documents = $profile->documents()
+            ->whereIn('status', [ReviewableStatus::Pending->value, ReviewableStatus::Approved->value])
+            ->get();
+        $personalTypes = $documents
+            ->whereNull('vehicle_id')
+            ->pluck('document_type')
+            ->map(fn (DriverDocumentType $type): string => $type->value);
+        $vehicleTypes = $documents
+            ->where('vehicle_id', $vehicleId)
+            ->pluck('document_type')
+            ->map(fn (DriverDocumentType $type): string => $type->value);
+        $missing = collect(self::PERSONAL_DOCUMENTS)
+            ->map(fn (DriverDocumentType $type): string => $type->value)
+            ->diff($personalTypes)
+            ->merge(
+                collect(self::VEHICLE_DOCUMENTS)
+                    ->map(fn (DriverDocumentType $type): string => $type->value)
+                    ->diff($vehicleTypes),
+            )
+            ->values();
+
+        if ($missing->isNotEmpty()) {
+            throw ValidationException::withMessages([
+                'documents' => ['Hồ sơ chưa đủ sáu loại giấy tờ bắt buộc: '.$missing
+                    ->map(fn (string $type): string => DriverDocumentType::from($type)->getLabel())
+                    ->implode(', ').'.'],
+            ]);
+        }
     }
 
     /** @param array<string, mixed> $before */

@@ -22,8 +22,6 @@ class StoreDriverApplicationRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
-            'cod_limit' => ['required', 'numeric', 'min:0', 'max:8000000'],
-        ];
+        return [];
     }
 }

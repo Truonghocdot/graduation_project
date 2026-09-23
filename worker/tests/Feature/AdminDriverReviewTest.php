@@ -30,6 +30,8 @@ test('approves a submitted driver application through the shared review service'
 
     app(DriverReviewService::class)->approve($profile, $admin);
 
+    expect($profile->fresh()->cod_limit)->toBe((float) config('finance.driver_daily_cod_limit'));
+
     $driverRoleId = Role::query()->where('key', RoleKey::Driver->value)->value('id');
     $this->assertDatabaseHas('user_roles', [
         'user_id' => $driver->id,

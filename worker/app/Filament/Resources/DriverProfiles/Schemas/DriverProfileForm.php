@@ -31,6 +31,7 @@ class DriverProfileForm
                     )->all())
                     ->disabled(),
                 TextInput::make('cod_limit')
+                    ->label('Hạn mức ứng COD mỗi ngày (VND)')
                     ->numeric()
                     ->disabled(),
             ]);

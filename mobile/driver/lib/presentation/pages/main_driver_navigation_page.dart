@@ -28,9 +28,19 @@ class _MainDriverNavigationPageState extends State<MainDriverNavigationPage> {
     ];
     const titles = ['Hoạt động', 'Lịch sử', 'Thu nhập', 'Hồ sơ'];
     return Scaffold(
-      appBar: AppBar(title: Text(titles[index])),
+      extendBody: index == 0,
+      extendBodyBehindAppBar: index == 0,
+      appBar: AppBar(
+        title: Text(titles[index]),
+        backgroundColor: index == 0 ? Colors.transparent : null,
+        surfaceTintColor: index == 0 ? Colors.transparent : null,
+        elevation: index == 0 ? 0 : null,
+      ),
       body: IndexedStack(index: index, children: pages),
       bottomNavigationBar: NavigationBar(
+        backgroundColor: index == 0
+            ? Theme.of(context).colorScheme.surface.withValues(alpha: 0.88)
+            : null,
         selectedIndex: index,
         onDestinationSelected: (value) => setState(() => index = value),
         destinations: const [

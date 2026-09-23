@@ -27,7 +27,6 @@ final class DriverApplicationBuilder
             'user_id' => $user->id,
             'review_status' => DriverReviewStatus::PendingReview,
             'availability_status' => DriverAvailabilityStatus::Offline,
-            'cod_limit' => 1_000_000,
             'submitted_at' => now(),
         ]);
 

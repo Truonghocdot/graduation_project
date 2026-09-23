@@ -8,6 +8,7 @@ use App\Enums\ServiceType;
 use App\Models\Role;
 use App\Models\ServiceEvidence;
 use App\Models\User;
+use App\Services\Finance\DriverDailyCodLimitService;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -198,6 +199,10 @@ test('records COD advance and collection separately from driver earnings', funct
     $this->postJson($url, executionTransition('pickup', 10.77, 106.68, $pickup), [
         'Idempotency-Key' => 'cod-pickup',
     ])->assertOk();
+    $dailyLimit = app(DriverDailyCodLimitService::class);
+    expect($dailyLimit->remaining($scenario['profile']->fresh()))->toBe(7_500_000.0)
+        ->and($dailyLimit->remaining($scenario['profile']->fresh(), now()->addDay()))
+        ->toBe(8_000_000.0);
     $this->postJson($url, executionTransition('start_delivery', 10.77, 106.68), [
         'Idempotency-Key' => 'cod-start',
     ])->assertOk();

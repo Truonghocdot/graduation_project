@@ -12,6 +12,7 @@ class DriverGoongMap extends StatefulWidget {
     this.dropoff,
     this.route,
     this.height = 260,
+    this.fullScreen = false,
   });
 
   final String mapKey;
@@ -20,6 +21,7 @@ class DriverGoongMap extends StatefulWidget {
   final NavigationCoordinate? dropoff;
   final List<NavigationCoordinate>? route;
   final double height;
+  final bool fullScreen;
 
   @override
   State<DriverGoongMap> createState() => _DriverGoongMapState();
@@ -64,27 +66,27 @@ class _DriverGoongMapState extends State<DriverGoongMap> {
           points.fold<double>(0, (sum, point) => sum + point.longitude) /
           points.length,
     );
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        height: widget.height,
-        child: MapLibreMap(
-          styleString:
-              'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=${Uri.encodeComponent(widget.mapKey)}',
-          initialCameraPosition: CameraPosition(
-            target: LatLng(center.latitude, center.longitude),
-            zoom: points.length == 1 ? 15 : 13,
-          ),
-          compassEnabled: false,
-          logoEnabled: false,
-          onMapCreated: (controller) => _controller = controller,
-          onStyleLoadedCallback: () {
-            _styleReady = true;
-            _drawMap();
-          },
+    final map = SizedBox(
+      height: widget.height,
+      child: MapLibreMap(
+        styleString:
+            'https://tiles.goong.io/assets/goong_map_highlight.json?api_key=${Uri.encodeComponent(widget.mapKey)}',
+        initialCameraPosition: CameraPosition(
+          target: LatLng(center.latitude, center.longitude),
+          zoom: points.length == 1 ? 15 : 13,
         ),
+        compassEnabled: false,
+        logoEnabled: false,
+        onMapCreated: (controller) => _controller = controller,
+        onStyleLoadedCallback: () {
+          _styleReady = true;
+          _drawMap();
+        },
       ),
     );
+    return widget.fullScreen
+        ? map
+        : ClipRRect(borderRadius: BorderRadius.circular(8), child: map);
   }
 
   List<NavigationCoordinate> get _visiblePoints => [

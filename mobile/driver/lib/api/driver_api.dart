@@ -99,13 +99,16 @@ abstract interface class DriverOperationsGateway {
   Future<void> validateSession(DriverSession session);
   Future<void> logout(DriverSession session);
   Future<DriverProfileSummary?> loadApplication(DriverSession session);
-  Future<DriverProfileSummary> saveApplication(
-    DriverSession session,
-    double codLimit,
-  );
+  Future<DriverProfileSummary> saveApplication(DriverSession session);
   Future<List<Map<String, dynamic>>> loadVehicleTypes(DriverSession session);
   Future<void> createVehicle({
     required DriverSession session,
+    required String vehicleTypeId,
+    required String plateNumber,
+  });
+  Future<void> updateVehicle({
+    required DriverSession session,
+    required String vehicleId,
     required String vehicleTypeId,
     required String plateNumber,
   });
@@ -764,17 +767,10 @@ class DriverApi
   }
 
   @override
-  Future<DriverProfileSummary> saveApplication(
-    DriverSession session,
-    double codLimit,
-  ) async => DriverProfileSummary.fromJson(
-    await _resource(
-      session,
-      'POST',
-      '/driver/application',
-      body: {'cod_limit': codLimit},
-    ),
-  );
+  Future<DriverProfileSummary> saveApplication(DriverSession session) async =>
+      DriverProfileSummary.fromJson(
+        await _resource(session, 'POST', '/driver/application', body: const {}),
+      );
 
   @override
   Future<List<Map<String, dynamic>>> loadVehicleTypes(
@@ -799,6 +795,21 @@ class DriverApi
       session,
       'POST',
       '/driver/vehicles',
+      body: {'vehicle_type_id': vehicleTypeId, 'plate_number': plateNumber},
+    );
+  }
+
+  @override
+  Future<void> updateVehicle({
+    required DriverSession session,
+    required String vehicleId,
+    required String vehicleTypeId,
+    required String plateNumber,
+  }) async {
+    await _resource(
+      session,
+      'PATCH',
+      '/driver/vehicles/$vehicleId',
       body: {'vehicle_type_id': vehicleTypeId, 'plate_number': plateNumber},
     );
   }

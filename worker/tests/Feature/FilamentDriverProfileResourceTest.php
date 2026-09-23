@@ -52,10 +52,11 @@ test('approves a driver through the Filament table action and writes audit', fun
     );
 
     Livewire::test(ListDriverProfiles::class)
-        ->callTableAction('approve', $profile)
+        ->callTableAction('approve', $profile, data: ['daily_cod_limit' => 8_000_000])
         ->assertHasNoTableActionErrors();
 
-    expect($profile->fresh()->review_status)->toBe(DriverReviewStatus::Approved);
+    expect($profile->fresh()->review_status)->toBe(DriverReviewStatus::Approved)
+        ->and($profile->fresh()->cod_limit)->toBe(8_000_000.0);
     $this->assertDatabaseHas('audit_logs', [
         'actor_user_id' => $admin->id,
         'action' => 'DRIVER_APPROVED',

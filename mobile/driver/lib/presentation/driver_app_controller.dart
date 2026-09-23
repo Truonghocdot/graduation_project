@@ -93,17 +93,7 @@ class DriverAppController extends ChangeNotifier {
     }
     await _guard(() async {
       await operations?.validateSession(_session);
-      if (onboarding) {
-        await _loadApplication();
-      } else {
-        profile = await operations?.loadApplication(_session);
-        _syncCapabilities();
-        await _loadOffers();
-        await _loadHistory();
-        _startRealtime();
-        _startOfferPolling();
-        _startLocationPolling();
-      }
+      await _loadApplication();
     }, showBusy: false);
     initializing = false;
     notifyListeners();
@@ -131,17 +121,7 @@ class DriverAppController extends ChangeNotifier {
         );
         await sessionStore?.save(result.token, onboarding: result.onboarding);
       }
-      if (onboarding) {
-        await _loadApplication();
-      } else {
-        profile = await operations?.loadApplication(_session);
-        _syncCapabilities();
-        await _loadOffers();
-        await _loadHistory();
-        _startRealtime();
-        _startOfferPolling();
-        _startLocationPolling();
-      }
+      await _loadApplication();
     });
   }
 
@@ -212,11 +192,11 @@ class DriverAppController extends ChangeNotifier {
 
   Future<void> refreshApplication() => _guard(_loadApplication);
 
-  Future<void> saveApplication(double codLimit) async {
+  Future<void> saveApplication() async {
     final ops = operations;
     if (ops == null) return;
     await _guard(() async {
-      profile = await ops.saveApplication(_session, codLimit);
+      profile = await ops.saveApplication(_session);
       await _loadApplication();
     });
   }
@@ -225,6 +205,22 @@ class DriverAppController extends ChangeNotifier {
     await _guard(() async {
       await operations?.createVehicle(
         session: _session,
+        vehicleTypeId: typeId,
+        plateNumber: plateNumber,
+      );
+      await _loadApplication();
+    });
+  }
+
+  Future<void> updateVehicle(
+    String vehicleId,
+    String typeId,
+    String plateNumber,
+  ) async {
+    await _guard(() async {
+      await operations?.updateVehicle(
+        session: _session,
+        vehicleId: vehicleId,
         vehicleTypeId: typeId,
         plateNumber: plateNumber,
       );
@@ -463,10 +459,36 @@ class DriverAppController extends ChangeNotifier {
 
   Future<void> _loadApplication() async {
     final ops = operations;
-    if (ops == null) return;
+    if (ops == null) {
+      if (!onboarding) await _loadDriverWorkspace();
+      return;
+    }
     profile = await ops.loadApplication(_session);
-    vehicleTypes = await ops.loadVehicleTypes(_session);
+    final approved = profile?.reviewStatus == 'APPROVED';
+    await _setOnboarding(!approved);
+
+    if (!approved) {
+      vehicleTypes = await ops.loadVehicleTypes(_session);
+      _syncCapabilities();
+      return;
+    }
+
+    await _loadDriverWorkspace();
+  }
+
+  Future<void> _loadDriverWorkspace() async {
     _syncCapabilities();
+    await _loadOffers();
+    await _loadHistory();
+    _startRealtime();
+    _startOfferPolling();
+    _startLocationPolling();
+  }
+
+  Future<void> _setOnboarding(bool value) async {
+    if (_session.onboarding == value) return;
+    _session = _session.copyWith(onboarding: value);
+    await sessionStore?.save(_session.token, onboarding: value);
   }
 
   void _syncCapabilities() {

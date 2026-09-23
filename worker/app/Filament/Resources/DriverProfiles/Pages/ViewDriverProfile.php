@@ -22,10 +22,23 @@ class ViewDriverProfile extends ViewRecord
             Action::make('approve')
                 ->label('Phê duyệt')
                 ->color('success')
+                ->form([
+                    TextInput::make('daily_cod_limit')
+                        ->label('Hạn mức ứng COD mỗi ngày (VND)')
+                        ->numeric()
+                        ->default((float) config('finance.driver_daily_cod_limit', 8_000_000))
+                        ->minValue(0)
+                        ->required()
+                        ->helperText('Tổng tiền COD đã ứng được tính lại từ 0 vào đầu mỗi ngày.'),
+                ])
                 ->requiresConfirmation()
                 ->visible(fn (): bool => $this->driver()->review_status === DriverReviewStatus::PendingReview)
-                ->action(function (DriverReviewService $review): void {
-                    $review->approve($this->driver(), $this->admin());
+                ->action(function (array $data, DriverReviewService $review): void {
+                    $review->approve(
+                        $this->driver(),
+                        $this->admin(),
+                        (float) $data['daily_cod_limit'],
+                    );
                     $this->refreshFormData(['review_status', 'availability_status', 'reviewed_at']);
                     Notification::make()->title('Đã phê duyệt tài xế')->success()->send();
                 }),
