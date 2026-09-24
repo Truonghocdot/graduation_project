@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
@@ -24,20 +25,22 @@ class _IncomingOrderDialogState extends State<IncomingOrderDialog> {
   late int seconds = widget.offer.expiresAt
       .difference(DateTime.now())
       .inSeconds
-      .clamp(0, 15);
+      .clamp(0, 3600);
   Timer? timer;
 
   @override
   void initState() {
     super.initState();
+    HapticFeedback.mediumImpact();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(
         () => seconds = widget.offer.expiresAt
             .difference(DateTime.now())
             .inSeconds
-            .clamp(0, 15),
+            .clamp(0, 3600),
       );
+      if (seconds == 3) HapticFeedback.selectionClick();
       if (seconds == 0) timer?.cancel();
     });
   }
@@ -55,7 +58,10 @@ class _IncomingOrderDialogState extends State<IncomingOrderDialog> {
       title: Row(
         children: [
           const Expanded(child: Text('Đề nghị mới')),
-          CircleAvatar(radius: 20, child: Text('$seconds')),
+          Semantics(
+            label: 'Còn $seconds giây để phản hồi',
+            child: CircleAvatar(radius: 20, child: Text('$seconds')),
+          ),
         ],
       ),
       content: Column(

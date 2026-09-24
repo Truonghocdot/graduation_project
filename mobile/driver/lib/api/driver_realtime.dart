@@ -3,6 +3,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 class DriverRealtime {
   io.Socket? _socket;
   String? _requestId;
+  void Function(Map<String, dynamic> event)? eventHandler;
 
   void connect({
     required String url,
@@ -24,7 +25,12 @@ class DriverRealtime {
       if (_requestId case final id?) socket.emit('booking:join', id);
       onChange();
     });
-    socket.on('booking:event', (_) => onChange());
+    socket.on('booking:event', (event) {
+      if (event is Map) {
+        eventHandler?.call(event.cast<String, dynamic>());
+      }
+      onChange();
+    });
     socket.on('notification:event', (_) => onChange());
     socket.connect();
   }
@@ -42,5 +48,6 @@ class DriverRealtime {
     _socket?.dispose();
     _socket = null;
     _requestId = null;
+    eventHandler = null;
   }
 }

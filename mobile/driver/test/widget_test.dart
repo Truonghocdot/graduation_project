@@ -164,6 +164,20 @@ class FakeDriverGateway implements DriverGateway {
   }
 
   @override
+  Future<DriverWalletTopupSummary> createTopup({
+    required DriverSession session,
+    required double amount,
+    required String idempotencyKey,
+  }) async => DriverWalletTopupSummary(
+    id: 'topup-1',
+    amount: amount,
+    status: 'PENDING',
+    reference: 'TOPUP-TEST',
+    vietQrPayload: 'bank=MB&amount=$amount',
+    expiresAt: DateTime.now().add(const Duration(minutes: 30)),
+  );
+
+  @override
   Future<List<DriverBankAccountSummary>> loadBankAccounts(
     DriverSession session,
   ) async {

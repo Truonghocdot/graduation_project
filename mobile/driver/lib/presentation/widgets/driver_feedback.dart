@@ -127,7 +127,7 @@ class DriverStatusBadge extends StatelessWidget {
         formatDriverValue(status),
         style: const TextStyle(
           color: Color(0xFF215F9A),
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
       ),

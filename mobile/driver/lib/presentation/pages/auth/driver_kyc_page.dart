@@ -25,6 +25,8 @@ class _DriverKycPageState extends State<DriverKycPage> {
   String? vehicleTypeId;
   String? editingVehicleTypeId;
   bool editingVehicle = false;
+  bool uploadingDocuments = false;
+  int uploadedDocumentCount = 0;
 
   static const _documents = [
     _DriverDocumentField(type: 'IDENTITY', numberLabel: 'Số CCCD'),
@@ -144,6 +146,20 @@ class _DriverKycPageState extends State<DriverKycPage> {
                   const SizedBox(height: 24),
                   _sectionTitle(context, '2. Giấy tờ bắt buộc'),
                   const SizedBox(height: 4),
+                  Text(
+                    '${_documentCount(profile)}/${_documents.length} giấy tờ đã sẵn sàng',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                  if (uploadingDocuments) ...[
+                    const SizedBox(height: 8),
+                    LinearProgressIndicator(
+                      value: _documents.isEmpty
+                          ? null
+                          : uploadedDocumentCount / _documents.length,
+                    ),
+                    const SizedBox(height: 4),
+                    Text('Đang tải giấy tờ lên máy chủ…'),
+                  ],
                   for (final document in _documents)
                     _DocumentInput(
                       field: document,
@@ -344,6 +360,14 @@ class _DriverKycPageState extends State<DriverKycPage> {
     return null;
   }
 
+  int _documentCount(DriverProfileSummary? profile) => _documents
+      .where(
+        (document) =>
+            pendingDocuments.containsKey(document.type) ||
+            _uploadedDocument(profile, document.type) != null,
+      )
+      .length;
+
   void _syncDocumentNumbers(DriverProfileSummary? profile) {
     if (profile == null) return;
     for (final document in _documents) {
@@ -460,22 +484,33 @@ class _DriverKycPageState extends State<DriverKycPage> {
       return;
     }
 
-    for (final document in List<_PendingDriverDocument>.of(
-      pendingDocuments.values,
-    )) {
-      await widget.controller.uploadDocument(
-        type: document.type,
-        name: document.name,
-        bytes: document.bytes,
-        number:
-            _numberController(document.type)?.text.trim() ?? document.number,
-        vehicleId: document.vehicleId,
-      );
-      if (!mounted || widget.controller.error != null) return;
-      setState(() => pendingDocuments.remove(document.type));
+    final pending = List<_PendingDriverDocument>.of(pendingDocuments.values);
+    if (pending.isNotEmpty) {
+      setState(() {
+        uploadingDocuments = true;
+        uploadedDocumentCount = _documentCount(profile) - pending.length;
+      });
     }
+    try {
+      for (final document in pending) {
+        await widget.controller.uploadDocument(
+          type: document.type,
+          name: document.name,
+          bytes: document.bytes,
+          number: _numberController(document.type)?.text.trim() ?? document.number,
+          vehicleId: document.vehicleId,
+        );
+        if (!mounted || widget.controller.error != null) return;
+        setState(() {
+          pendingDocuments.remove(document.type);
+          uploadedDocumentCount++;
+        });
+      }
 
-    await widget.controller.submitApplication(vehicleId);
+      await widget.controller.submitApplication(vehicleId);
+    } finally {
+      if (mounted) setState(() => uploadingDocuments = false);
+    }
   }
 
   void _showMessage(String message) {

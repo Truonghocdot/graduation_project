@@ -261,6 +261,35 @@ class DriverWalletSummary {
   }
 }
 
+class DriverWalletTopupSummary {
+  const DriverWalletTopupSummary({
+    required this.id,
+    required this.amount,
+    required this.status,
+    required this.reference,
+    required this.vietQrPayload,
+    required this.expiresAt,
+  });
+
+  final String id;
+  final double amount;
+  final String status;
+  final String reference;
+  final String vietQrPayload;
+  final DateTime expiresAt;
+
+  factory DriverWalletTopupSummary.fromJson(Map<String, dynamic> json) {
+    return DriverWalletTopupSummary(
+      id: json['id'] as String,
+      amount: (json['amount'] as num).toDouble(),
+      status: json['status'] as String,
+      reference: json['vietqr_reference'] as String,
+      vietQrPayload: json['vietqr_payload'] as String,
+      expiresAt: DateTime.parse(json['expires_at'].toString()),
+    );
+  }
+}
+
 class DriverJobSummary {
   const DriverJobSummary({
     required this.id,
@@ -474,6 +503,12 @@ abstract interface class DriverGateway {
   });
 
   Future<DriverWalletSummary> loadWallet(DriverSession session);
+
+  Future<DriverWalletTopupSummary> createTopup({
+    required DriverSession session,
+    required double amount,
+    required String idempotencyKey,
+  });
 
   Future<List<DriverBankAccountSummary>> loadBankAccounts(
     DriverSession session,
@@ -1055,6 +1090,25 @@ class DriverApi
     );
     _assertSuccess(response);
     return DriverWalletSummary.fromJson(
+      response.body['data'] as Map<String, dynamic>,
+    );
+  }
+
+  @override
+  Future<DriverWalletTopupSummary> createTopup({
+    required DriverSession session,
+    required double amount,
+    required String idempotencyKey,
+  }) async {
+    final response = await _transport.send(
+      method: 'POST',
+      uri: Uri.parse('${_base(session.baseUrl)}/driver/wallet/topups'),
+      token: session.token,
+      headers: {'Idempotency-Key': idempotencyKey},
+      body: {'amount': amount},
+    );
+    _assertSuccess(response);
+    return DriverWalletTopupSummary.fromJson(
       response.body['data'] as Map<String, dynamic>,
     );
   }

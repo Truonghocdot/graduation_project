@@ -10,12 +10,14 @@ class GoongMapPreview extends StatefulWidget {
     required this.dropoff,
     required this.mapKey,
     this.route,
+    this.current,
   });
 
   final GoongCoordinate pickup;
   final GoongCoordinate dropoff;
   final String mapKey;
   final List<GoongCoordinate>? route;
+  final GoongCoordinate? current;
 
   @override
   State<GoongMapPreview> createState() => _GoongMapPreviewState();
@@ -31,7 +33,8 @@ class _GoongMapPreviewState extends State<GoongMapPreview> {
     if (_styleReady &&
         (oldWidget.pickup != widget.pickup ||
             oldWidget.dropoff != widget.dropoff ||
-            oldWidget.route != widget.route)) {
+            oldWidget.route != widget.route ||
+            oldWidget.current != widget.current)) {
       _drawAnnotations();
     }
   }
@@ -43,9 +46,19 @@ class _GoongMapPreviewState extends State<GoongMapPreview> {
         message: 'Thêm GOONG_MAP_KEY để hiển thị bản đồ Goong.',
       );
     }
+    final points = [
+      widget.pickup,
+      widget.dropoff,
+      ...?(widget.current == null
+          ? null
+          : <GoongCoordinate>[widget.current!]),
+    ];
     final center = GoongCoordinate(
-      latitude: (widget.pickup.latitude + widget.dropoff.latitude) / 2,
-      longitude: (widget.pickup.longitude + widget.dropoff.longitude) / 2,
+      latitude: points.map((point) => point.latitude).reduce((a, b) => a + b) /
+          points.length,
+      longitude:
+          points.map((point) => point.longitude).reduce((a, b) => a + b) /
+          points.length,
     );
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
@@ -108,6 +121,18 @@ class _GoongMapPreviewState extends State<GoongMapPreview> {
         textSize: 16,
       ),
     );
+    if (widget.current case final current?) {
+      await map.addSymbol(
+        SymbolOptions(
+          geometry: LatLng(current.latitude, current.longitude),
+          textField: 'Tài xế',
+          textColor: '#215F9A',
+          textHaloColor: '#FFFFFF',
+          textHaloWidth: 2,
+          textSize: 14,
+        ),
+      );
+    }
   }
 }
 

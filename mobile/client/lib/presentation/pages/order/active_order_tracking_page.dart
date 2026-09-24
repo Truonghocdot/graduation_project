@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../api/booking_api.dart';
+import '../../../api/goong_location_api.dart';
 import '../../client_app_controller.dart';
 import '../../widgets/app_feedback.dart';
+import '../../widgets/goong_map_preview.dart';
 import '../chat/chat_with_driver_page.dart';
 import '../profile/rating_review_page.dart';
 
@@ -17,6 +19,7 @@ class ActiveOrderTrackingPage extends StatelessWidget {
       animation: controller,
       builder: (context, _) {
         final request = controller.activeRequest;
+        final tracking = controller.tracking;
         return Scaffold(
           appBar: AppBar(
             title: const Text('Theo dõi dịch vụ'),
@@ -35,7 +38,36 @@ class ActiveOrderTrackingPage extends StatelessWidget {
               : ListView(
                   padding: const EdgeInsets.all(16),
                   children: [
+                    if (request.pickupLatitude != null &&
+                        request.pickupLongitude != null &&
+                        request.dropoffLatitude != null &&
+                        request.dropoffLongitude != null)
+                      GoongMapPreview(
+                        pickup: GoongCoordinate(
+                          latitude: request.pickupLatitude!,
+                          longitude: request.pickupLongitude!,
+                        ),
+                        dropoff: GoongCoordinate(
+                          latitude: request.dropoffLatitude!,
+                          longitude: request.dropoffLongitude!,
+                        ),
+                        current: tracking?.liveLocation == null
+                            ? null
+                            : GoongCoordinate(
+                                latitude: tracking!.liveLocation!.latitude,
+                                longitude: tracking.liveLocation!.longitude,
+                              ),
+                        mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),
+                      ),
+                    if (tracking?.locationStale == true) ...[
+                      const SizedBox(height: 8),
+                      const Text('Vị trí tài xế đang chậm cập nhật.'),
+                    ],
                     _RoutePanel(request: request),
+                    if (tracking != null) ...[
+                      const SizedBox(height: 14),
+                      _TrackingStatus(tracking: tracking),
+                    ],
                     const SizedBox(height: 14),
                     Card(
                       child: Padding(
@@ -300,5 +332,58 @@ class _RoutePanel extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class _TrackingStatus extends StatelessWidget {
+  const _TrackingStatus({required this.tracking});
+
+  final TrackingSummary tracking;
+
+  @override
+  Widget build(BuildContext context) {
+    final meta = tracking.statusMeta;
+    final label = meta['label']?.toString() ?? formatClientValue(tracking.status);
+    final progress = (meta['progress_index'] as num?)?.toDouble() ?? 0;
+    final total = (meta['progress_total'] as num?)?.toDouble() ?? 1;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(label, style: Theme.of(context).textTheme.titleMedium),
+            if (tracking.status == 'SEARCHING_DRIVER') ...[
+              const SizedBox(height: 6),
+              const Text('Đang tìm tài xế gần điểm đón của bạn.'),
+            ],
+            const SizedBox(height: 10),
+            LinearProgressIndicator(value: total == 0 ? null : progress / total),
+            if (tracking.driverName case final name?) ...[
+              const SizedBox(height: 12),
+              Text('Tài xế: $name'),
+              if (tracking.vehiclePlate case final plate?)
+                Text(
+                  'Xe ${tracking.vehicleType ?? ''} · $plate',
+                ),
+            ],
+            if (tracking.liveLocation case final location?) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Vị trí cập nhật ${_ageLabel(location.capturedAt)}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _ageLabel(DateTime capturedAt) {
+    final seconds = DateTime.now().difference(capturedAt).inSeconds;
+    if (seconds <= 1) return 'vừa xong';
+    if (seconds < 60) return '$seconds giây trước';
+    return '${(seconds / 60).floor()} phút trước';
   }
 }

@@ -76,7 +76,12 @@ class _JobNavigationPageState extends State<JobNavigationPage> {
             ],
           ),
           body: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              16,
+              16,
+              MediaQuery.paddingOf(context).bottom + 24,
+            ),
             children: [
               DriverGoongMap(
                 mapKey: const String.fromEnvironment('GOONG_MAP_KEY'),

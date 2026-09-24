@@ -25,35 +25,25 @@ class CreateOrderPage extends StatefulWidget {
 
 class _CreateOrderPageState extends State<CreateOrderPage> {
   final formKey = GlobalKey<FormState>();
-  final pickupAddress = TextEditingController(text: '1 Nguyễn Huệ, Quận 1');
-  final dropoffAddress = TextEditingController(text: '1 Võ Văn Tần, Quận 3');
+  final pickupAddress = TextEditingController();
+  final dropoffAddress = TextEditingController();
   final goodsType = TextEditingController(text: 'GENERAL');
   final weight = TextEditingController(text: '5');
   final passengers = TextEditingController(text: '1');
   final voucher = TextEditingController();
-  GoongCoordinate _pickup = const GoongCoordinate(
-    latitude: 10.773,
-    longitude: 106.704,
-  );
-  GoongCoordinate _dropoff = const GoongCoordinate(
-    latitude: 10.780,
-    longitude: 106.690,
-  );
+  GoongCoordinate _pickup = const GoongCoordinate(latitude: 0, longitude: 0);
+  GoongCoordinate _dropoff = const GoongCoordinate(latitude: 0, longitude: 0);
   GoongRoute? _route;
   String? _routeError;
-  bool _pickupConfirmed = true;
-  bool _dropoffConfirmed = true;
+  bool _pickupConfirmed = false;
+  bool _dropoffConfirmed = false;
   DateTime? scheduledAt;
 
   @override
   void initState() {
     super.initState();
-    if (widget.controller.goong?.configured == true) {
-      pickupAddress.clear();
-      dropoffAddress.clear();
-      _pickupConfirmed = false;
-      _dropoffConfirmed = false;
-    }
+    // Location fields intentionally start empty. Coordinates must come from a
+    // confirmed Goong place or the device location action.
   }
 
   @override
@@ -284,13 +274,14 @@ class _CreateOrderPageState extends State<CreateOrderPage> {
   Future<void> _quote() async {
     if (!formKey.currentState!.validate()) return;
     final goong = widget.controller.goong;
-    if (pickupAddress.text.trim().isEmpty ||
+    if (goong?.configured != true ||
+        pickupAddress.text.trim().isEmpty ||
         dropoffAddress.text.trim().isEmpty ||
-        (goong?.configured == true &&
-            (!_pickupConfirmed || !_dropoffConfirmed))) {
+        !_pickupConfirmed ||
+        !_dropoffConfirmed) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Hãy tìm và chọn đầy đủ điểm đón, điểm đến.'),
+          content: Text('Hãy cấu hình Goong và chọn đủ điểm đón, điểm đến.'),
         ),
       );
       return;

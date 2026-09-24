@@ -52,8 +52,8 @@ class DriverAvailabilityService
 
             $walletBalance = $user->wallet()->value('balance');
 
-            if ($walletBalance === null || (float) $walletBalance < 0) {
-                $this->throwEligibility('Không tìm thấy ví tài xế hoặc số dư ví đang âm.');
+            if ((float) $walletBalance < 0) {
+                $this->throwEligibility('số dư ví không đủ để hoạt động.');
             }
 
             $vehicle = $profile->vehicles()

@@ -69,7 +69,7 @@ class _DriverHomePageState extends State<DriverHomePage> {
           16,
           MediaQuery.paddingOf(context).top + kToolbarHeight + 12,
           16,
-          28,
+          MediaQuery.paddingOf(context).bottom + 96,
         ),
         children: [
           Card(

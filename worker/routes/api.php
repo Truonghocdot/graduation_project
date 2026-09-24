@@ -38,6 +38,7 @@ use App\Http\Controllers\Api\V1\ServiceEvidenceFileController;
 use App\Http\Controllers\Api\V1\ServiceRequestCancellationController;
 use App\Http\Controllers\Api\V1\ServiceRequestHistoryController;
 use App\Http\Controllers\Api\V1\ServiceRequestSnapshotController;
+use App\Http\Controllers\Api\V1\ServiceRequestTrackingController;
 use App\Http\Controllers\Api\V1\SupportTicketController;
 use App\Http\Controllers\Api\V1\SupportTicketMessageController;
 use App\Http\Controllers\Api\V1\TicketAttachmentFileController;
@@ -83,6 +84,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('service-requests', ServiceRequestHistoryController::class);
         Route::post('service-requests/{serviceRequest}/cancel', ServiceRequestCancellationController::class);
         Route::get('service-requests/{serviceRequest}', ServiceRequestSnapshotController::class);
+        Route::get('service-requests/{serviceRequest}/tracking', ServiceRequestTrackingController::class);
         Route::get('service-requests/{serviceRequest}/realtime-access', RealtimeAccessController::class);
         Route::post('service-requests/{serviceRequest}/ratings', [RatingController::class, 'store']);
         Route::get('service-requests/{serviceRequest}/chat', [ChatController::class, 'index']);
@@ -115,6 +117,7 @@ Route::prefix('v1')->group(function (): void {
 
         Route::middleware('role:DRIVER')->group(function (): void {
             Route::get('driver/bank-accounts', [BankAccountController::class, 'index']);
+            Route::post('driver/wallet/topups', [WalletTopupController::class, 'store']);
             Route::post('driver/bank-accounts', [BankAccountController::class, 'store']);
             Route::get('driver/offers', [OfferController::class, 'index']);
             Route::get('driver/history', JobHistoryController::class);

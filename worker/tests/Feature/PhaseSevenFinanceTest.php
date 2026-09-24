@@ -58,6 +58,30 @@ test('creates and completes a SePay top-up exactly once for duplicate webhooks',
     ]);
 });
 
+test('driver can create a VietQR top-up while the wallet is negative', function () {
+    config()->set([
+        'finance.vietqr.bank_code' => 'MB',
+        'finance.vietqr.account_number' => '0123456789',
+        'finance.vietqr.account_name' => 'PROJECT',
+    ]);
+    $scenario = ExecutionScenarioBuilder::create(ServiceType::Drive);
+    $scenario['driver_wallet']->forceFill(['balance' => -150_000])->save();
+    Sanctum::actingAs($scenario['driver'], ['driver:*']);
+
+    $response = $this->postJson('/api/v1/driver/wallet/topups', [
+        'amount' => 200_000,
+    ], ['Idempotency-Key' => 'driver-topup-create-key'])->assertCreated();
+
+    expect($response->json('data.status'))->toBe('PENDING')
+        ->and($response->json('data.amount'))->toBe(200_000)
+        ->and($response->json('data.vietqr_reference'))->not->toBeEmpty();
+    $this->assertDatabaseHas('wallet_topups', [
+        'wallet_id' => $scenario['driver_wallet']->id,
+        'amount' => 200_000,
+        'status' => 'PENDING',
+    ]);
+});
+
 test('rejects a SePay webhook with an invalid secret', function () {
     config()->set('services.sepay.webhook_secret', 'correct-secret');
 

@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Models\ServiceRequest;
+use App\Support\ServiceStatusMetadata;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -16,6 +17,7 @@ class ServiceRequestResource extends JsonResource
             'id' => $this->public_id,
             'service_type' => $this->service_type->value,
             'status' => $this->status->value,
+            'status_meta' => ServiceStatusMetadata::for($this->service_type, $this->status),
             'booking_type' => $this->booking_type->value,
             'scheduled_at' => $this->scheduled_at,
             'search_started_at' => $this->search_started_at,

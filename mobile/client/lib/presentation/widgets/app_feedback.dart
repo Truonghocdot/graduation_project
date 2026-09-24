@@ -133,7 +133,7 @@ class StatusBadge extends StatelessWidget {
         formatClientValue(status),
         style: TextStyle(
           color: foreground,
-          fontSize: 11,
+          fontSize: 12,
           fontWeight: FontWeight.w700,
         ),
       ),

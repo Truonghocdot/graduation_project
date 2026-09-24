@@ -23,6 +23,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final password = TextEditingController();
   final code = TextEditingController();
   bool awaitingOtp = false;
+  String? validationError;
 
   @override
   void dispose() {
@@ -84,7 +85,8 @@ class _RegisterPageState extends State<RegisterPage> {
                         keyboardType: TextInputType.number,
                         decoration: const InputDecoration(labelText: 'Mã OTP'),
                       ),
-                    if (widget.controller.error case final error?) ...[
+                    if (validationError ?? widget.controller.error
+                        case final error?) ...[
                       const SizedBox(height: 12),
                       ErrorBanner(message: error),
                     ],
@@ -124,6 +126,10 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _submit() async {
     if (awaitingOtp) {
+      if (code.text.trim().isEmpty) {
+        setState(() => validationError = 'Nhập mã OTP.');
+        return;
+      }
       await widget.controller.verifyPhone(phone.text.trim(), code.text.trim());
       if (widget.controller.authenticated && mounted) {
         Navigator.pop(context);
@@ -133,8 +139,10 @@ class _RegisterPageState extends State<RegisterPage> {
     if (name.text.trim().isEmpty ||
         phone.text.trim().isEmpty ||
         password.text.isEmpty) {
+      setState(() => validationError = 'Nhập đủ họ tên, số điện thoại và mật khẩu.');
       return;
     }
+    setState(() => validationError = null);
     await widget.controller.register(
       name: name.text.trim(),
       phone: phone.text.trim(),

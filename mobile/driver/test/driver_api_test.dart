@@ -26,6 +26,25 @@ void main() {
     );
     expect(transport.calls[1].headers['Idempotency-Key'], 'accept-key');
   });
+
+  test('creates a driver wallet VietQR top-up through the driver endpoint', () async {
+    final transport = RecordingTransport();
+    final api = DriverApi(transport: transport);
+    const session = DriverSession(
+      baseUrl: 'http://localhost/api/v1',
+      token: 'driver-token',
+    );
+
+    final topup = await api.createTopup(
+      session: session,
+      amount: 200000,
+      idempotencyKey: 'driver-topup-key',
+    );
+
+    expect(topup.status, 'PENDING');
+    expect(transport.calls.single.uri.path, '/api/v1/driver/wallet/topups');
+    expect(transport.calls.single.headers['Idempotency-Key'], 'driver-topup-key');
+  });
 }
 
 class RecordingTransport implements ApiTransport {
@@ -40,6 +59,21 @@ class RecordingTransport implements ApiTransport {
     Map<String, String> headers = const {},
   }) async {
     calls.add(RecordedCall(uri: uri, headers: headers));
+    if (uri.path.endsWith('/driver/wallet/topups')) {
+      return ApiResponse(201, {
+        'data': {
+          'id': 'topup-1',
+          'amount': 200000,
+          'status': 'PENDING',
+          'vietqr_reference': 'TOPUP-TEST',
+          'vietqr_payload': 'bank=MB&amount=200000',
+          'expires_at': DateTime.now()
+              .add(const Duration(minutes: 30))
+              .toUtc()
+              .toIso8601String(),
+        },
+      });
+    }
     final status = body?['action'] == 'accept' ? 'ACCEPTED' : 'PENDING';
     final offer = {
       'id': 'offer-1',

@@ -9,6 +9,7 @@ import '../api/session_store.dart';
 import 'client_app_controller.dart';
 import 'pages/auth/login_page.dart';
 import 'pages/main_navigation_page.dart';
+import 'theme/app_theme.dart';
 
 class BookingApp extends StatefulWidget {
   const BookingApp({
@@ -57,47 +58,15 @@ class _BookingAppState extends State<BookingApp> {
 
   @override
   Widget build(BuildContext context) {
-    const colors = ColorScheme.light(
-      primary: Color(0xFF146B52),
-      onPrimary: Colors.white,
-      secondary: Color(0xFFB35C21),
-      onSecondary: Colors.white,
-      surface: Color(0xFFF7F8F5),
-      onSurface: Color(0xFF1B2420),
-      error: Color(0xFFB42318),
-      onError: Colors.white,
-    );
-
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Giao hàng & Đặt xe',
       locale: const Locale('vi', 'VN'),
       supportedLocales: const [Locale('vi', 'VN')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      theme: ThemeData(
-        colorScheme: colors,
-        scaffoldBackgroundColor: colors.surface,
-        useMaterial3: true,
-        cardTheme: const CardThemeData(
-          elevation: 0,
-          margin: EdgeInsets.zero,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.all(Radius.circular(8)),
-            side: BorderSide(color: Color(0xFFD9DEDA)),
-          ),
-        ),
-        inputDecorationTheme: const InputDecorationTheme(
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.all(Radius.circular(6)),
-          ),
-        ),
-        navigationBarTheme: const NavigationBarThemeData(
-          height: 68,
-          labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-        ),
-      ),
+      theme: ClientTheme.light(),
+      darkTheme: ClientTheme.dark(),
+      themeMode: ThemeMode.system,
       home: AnimatedBuilder(
         animation: controller,
         builder: (context, _) {

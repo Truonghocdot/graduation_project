@@ -50,7 +50,12 @@ class _DriverHistoryPageState extends State<DriverHistoryPage> {
             ],
           ),
           const SizedBox(height: 18),
-          if (jobs.isEmpty)
+          if (jobs.isEmpty && widget.controller.busy)
+            const Padding(
+              padding: EdgeInsets.all(48),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (jobs.isEmpty)
             const DriverEmptyState(
               icon: Icons.history,
               title: 'Chưa có lịch sử',

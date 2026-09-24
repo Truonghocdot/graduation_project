@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
+import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
 import '../../widgets/driver_feedback.dart';
 import 'withdraw_page.dart';
@@ -45,7 +47,9 @@ class _WalletPageState extends State<WalletPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  '${wallet?.balance.toStringAsFixed(0) ?? '0'} VND',
+                  wallet == null && state.busy
+                      ? 'Đang tải…'
+                      : '${wallet?.balance.toStringAsFixed(0) ?? '—'} VND',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
@@ -54,12 +58,43 @@ class _WalletPageState extends State<WalletPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Khả dụng ${wallet?.available.toStringAsFixed(0) ?? '0'} VND',
+                  wallet == null && state.busy
+                      ? 'Đang đồng bộ số dư'
+                      : 'Khả dụng ${wallet?.available.toStringAsFixed(0) ?? '—'} VND',
                   style: const TextStyle(color: Color(0xFFCFE2F1)),
                 ),
               ],
             ),
           ),
+          if (wallet case final current? when current.balance < 0) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.errorContainer,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(
+                    Icons.warning_amber_rounded,
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Ví đang âm ${current.balance.abs().toStringAsFixed(0)} VND. '
+                      'Nạp tiền để có thể online và nhận chuyến.',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onErrorContainer,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           if (state.error case final error?) ...[
             const SizedBox(height: 10),
             DriverErrorBanner(message: error),
@@ -77,17 +112,25 @@ class _WalletPageState extends State<WalletPage> {
               const SizedBox(width: 8),
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => Navigator.push(
+                  onPressed: state.busy ? null : () => _topUp(context),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Nạp ví'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: state.busy || wallet == null || wallet.balance < 0
+                ? null
+                : () => Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => WithdrawPage(controller: state),
                     ),
                   ),
-                  icon: const Icon(Icons.arrow_upward),
-                  label: const Text('Rút tiền'),
-                ),
-              ),
-            ],
+            icon: const Icon(Icons.arrow_upward),
+            label: const Text('Rút tiền'),
           ),
           const SizedBox(height: 22),
           Text(
@@ -173,5 +216,121 @@ class _WalletPageState extends State<WalletPage> {
       disposeTextControllerAfterRoute(number),
       disposeTextControllerAfterRoute(name),
     ]);
+  }
+
+  Future<void> _topUp(BuildContext context) async {
+    final wallet = widget.controller.wallet;
+    final suggested = wallet != null && wallet.balance < 0
+        ? (wallet.balance.abs().ceil() < 10000
+              ? 10000
+              : wallet.balance.abs().ceil()).toString()
+        : '100000';
+    final amount = TextEditingController(text: suggested);
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) => SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(
+          16,
+          20,
+          16,
+          MediaQuery.viewInsetsOf(context).bottom + 20,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Nạp ví tài xế', style: Theme.of(context).textTheme.titleLarge),
+            const SizedBox(height: 8),
+            const Text('Tạo mã VietQR, sau đó chuyển khoản đúng số tiền và nội dung.'),
+            const SizedBox(height: 14),
+            TextField(
+              controller: amount,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Số tiền nạp (VND)',
+                prefixIcon: Icon(Icons.payments_outlined),
+              ),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed: () => Navigator.pop(context, true),
+              icon: const Icon(Icons.qr_code_2),
+              label: const Text('Tạo mã VietQR'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true || !mounted) {
+      await disposeTextControllerAfterRoute(amount);
+      return;
+    }
+    final value = double.tryParse(amount.text.replaceAll(',', '').trim());
+    if (value == null || value < 10000) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Số tiền nạp tối thiểu là 10.000 VND.')),
+      );
+      await disposeTextControllerAfterRoute(amount);
+      return;
+    }
+    final topup = await widget.controller.createTopup(value);
+    if (context.mounted && topup != null) await _showTopupCode(context, topup);
+    await disposeTextControllerAfterRoute(amount);
+  }
+
+  Future<void> _showTopupCode(
+    BuildContext context,
+    DriverWalletTopupSummary topup,
+  ) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Mã nạp ví VietQR'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text('Số tiền: ${topup.amount.toStringAsFixed(0)} VND'),
+              const SizedBox(height: 8),
+              Text('Nội dung chuyển khoản: ${topup.reference}'),
+              const SizedBox(height: 12),
+              SelectableText(topup.vietQrPayload),
+              const SizedBox(height: 8),
+              Text(
+                'Mã có hiệu lực đến ${topup.expiresAt.toLocal()}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: topup.vietQrPayload));
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Đã sao chép nội dung VietQR.')),
+                );
+              }
+            },
+            icon: const Icon(Icons.copy_outlined),
+            label: const Text('Sao chép'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Đóng'),
+          ),
+          TextButton(
+            onPressed: () async {
+              await widget.controller.loadWallet();
+              if (context.mounted) Navigator.pop(context);
+            },
+            child: const Text('Làm mới số dư'),
+          ),
+        ],
+      ),
+    );
   }
 }

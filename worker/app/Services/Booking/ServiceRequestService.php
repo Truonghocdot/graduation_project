@@ -20,6 +20,7 @@ use App\Models\ServiceStatusHistory;
 use App\Models\ServiceStop;
 use App\Models\User;
 use App\Models\VehicleType;
+use App\Services\Matching\DriverMatchingService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -30,6 +31,7 @@ class ServiceRequestService
         private readonly IdempotencyService $idempotency,
         private readonly WalletPaymentService $walletPayment,
         private readonly VoucherRedemptionService $voucherRedemption,
+        private readonly DriverMatchingService $matching,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -51,7 +53,7 @@ class ServiceRequestService
         string $idempotencyKey,
         ServiceType $serviceType,
     ): ServiceRequest {
-        return DB::transaction(function () use ($user, $data, $idempotencyKey, $serviceType): ServiceRequest {
+        $request = DB::transaction(function () use ($user, $data, $idempotencyKey, $serviceType): ServiceRequest {
             $idempotency = $this->idempotency->begin(
                 $user,
                 'service-request.create.'.$serviceType->value,
@@ -170,6 +172,21 @@ class ServiceRequestService
 
             return $this->load($serviceRequest);
         });
+
+        // Matching is best-effort after the booking is committed. A Redis or
+        // presence failure must not undo a paid booking; the scheduler retries.
+        if ($request->status === ServiceRequestStatus::SearchingDriver) {
+            try {
+                $this->matching->dispatch($request);
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+
+        $request->refresh();
+        $request->wasRecentlyCreated = true;
+
+        return $this->load($request);
     }
 
     private function assertQuote(Quote $quote, ServiceType $serviceType): void

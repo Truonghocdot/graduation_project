@@ -30,6 +30,7 @@ class ClientAppController extends ChangeNotifier {
   List<ServiceRequestSummary> history = const [];
   QuoteSummary? quote;
   ServiceRequestSummary? activeRequest;
+  TrackingSummary? tracking;
   WalletSummary? wallet;
   CustomerProfileSummary? customerProfile;
   List<AppNotificationSummary> notifications = const [];
@@ -105,6 +106,7 @@ class ClientAppController extends ChangeNotifier {
           if (exception.statusCode == 401) rethrow;
         }
       }
+      await _loadTracking();
       _startRealtime();
       _startPolling();
     }, showBusy: false);
@@ -241,6 +243,7 @@ class ClientAppController extends ChangeNotifier {
       _createKey = null;
       await sessionStore?.writeLastRequestId(activeRequest!.id);
       realtime?.watch(activeRequest!.id);
+      await _loadTracking();
       await _loadHistory();
       _startPolling();
     });
@@ -251,6 +254,7 @@ class ClientAppController extends ChangeNotifier {
     if (request == null) return;
     try {
       activeRequest = await gateway.loadServiceRequest(_session, request.id);
+      await _loadTracking();
       notifyListeners();
     } on BookingApiException catch (exception) {
       if (exception.statusCode == 401) await clearSession();
@@ -291,6 +295,7 @@ class ClientAppController extends ChangeNotifier {
       activeRequest = await gateway.loadServiceRequest(_session, request.id);
       await sessionStore?.writeLastRequestId(request.id);
       realtime?.watch(request.id);
+      await _loadTracking();
       _startPolling();
     });
   }
@@ -359,6 +364,7 @@ class ClientAppController extends ChangeNotifier {
     history = const [];
     quote = null;
     activeRequest = null;
+    tracking = null;
     wallet = null;
     customerProfile = null;
     notifications = const [];
@@ -403,6 +409,7 @@ class ClientAppController extends ChangeNotifier {
     final url = configured.isNotEmpty
         ? configured
         : uri.replace(port: 3000, path: '', query: '', fragment: '').toString();
+    realtime!.eventHandler = (_) => unawaited(_loadTracking());
     realtime!.connect(
       url: url,
       token: _session.token,
@@ -420,6 +427,22 @@ class ClientAppController extends ChangeNotifier {
       const Duration(seconds: 10),
       (_) => unawaited(refreshActiveRequest()),
     );
+  }
+
+  Future<void> _loadTracking() async {
+    final request = activeRequest;
+    final trackingGateway = gateway is BookingTrackingGateway
+        ? gateway as BookingTrackingGateway
+        : null;
+    if (request == null || trackingGateway == null) return;
+    try {
+      tracking = await trackingGateway.loadTracking(_session, request.id);
+      if (!_disposed) notifyListeners();
+    } on BookingApiException catch (exception) {
+      if (exception.statusCode == 401) await clearSession();
+    } catch (_) {
+      // The snapshot remains usable when the live projection is unavailable.
+    }
   }
 
   Future<void> _guard(

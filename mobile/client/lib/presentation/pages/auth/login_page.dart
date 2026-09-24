@@ -16,6 +16,7 @@ class LoginPage extends StatefulWidget {
 class _LoginPageState extends State<LoginPage> {
   final phone = TextEditingController();
   final password = TextEditingController();
+  String? validationError;
 
   @override
   void dispose() {
@@ -56,6 +57,8 @@ class _LoginPageState extends State<LoginPage> {
                     controller: phone,
                     enabled: !state.busy,
                     keyboardType: TextInputType.phone,
+                    autofillHints: const [AutofillHints.telephoneNumber],
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Số điện thoại',
                       prefixIcon: Icon(Icons.phone_outlined),
@@ -66,13 +69,15 @@ class _LoginPageState extends State<LoginPage> {
                     controller: password,
                     enabled: !state.busy,
                     obscureText: true,
+                    autofillHints: const [AutofillHints.password],
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _login(),
                     decoration: const InputDecoration(
                       labelText: 'Mật khẩu',
                       prefixIcon: Icon(Icons.lock_outline),
                     ),
                   ),
-                  if (state.error case final error?) ...[
+                  if (validationError ?? state.error case final error?) ...[
                     const SizedBox(height: 12),
                     ErrorBanner(message: error),
                   ],
@@ -120,7 +125,11 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Future<void> _login() async {
-    if (phone.text.trim().isEmpty || password.text.isEmpty) return;
+    if (phone.text.trim().isEmpty || password.text.isEmpty) {
+      setState(() => validationError = 'Nhập số điện thoại và mật khẩu.');
+      return;
+    }
+    setState(() => validationError = null);
     await widget.controller.login(phone.text.trim(), password.text);
   }
 

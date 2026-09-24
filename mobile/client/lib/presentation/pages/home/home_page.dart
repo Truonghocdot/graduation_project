@@ -97,12 +97,6 @@ class HomePage extends StatelessWidget {
                 subtitle: 'Di chuyển theo yêu cầu',
                 onTap: () => _openService(context, ServiceKind.drive),
               ),
-              _ServiceTile(
-                icon: Icons.schedule_outlined,
-                title: 'Đặt lịch',
-                subtitle: 'Chủ động thời gian',
-                onTap: () => _openService(context, ServiceKind.drive),
-              ),
             ],
           ),
           if (controller.error case final error?) ...[

@@ -377,6 +377,19 @@ class DriverAppController extends ChangeNotifier {
     });
   }
 
+  Future<DriverWalletTopupSummary?> createTopup(double amount) async {
+    DriverWalletTopupSummary? result;
+    await _guard(() async {
+      result = await gateway.createTopup(
+        session: _session,
+        amount: amount,
+        idempotencyKey: newRequestId(),
+      );
+      await loadWallet();
+    });
+    return result;
+  }
+
   Future<void> addBankAccount({
     required String bankCode,
     required String accountNumber,

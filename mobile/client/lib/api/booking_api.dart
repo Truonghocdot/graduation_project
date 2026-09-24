@@ -227,6 +227,81 @@ class ServiceRequestSummary {
   }
 }
 
+class LiveLocationSummary {
+  const LiveLocationSummary({
+    required this.latitude,
+    required this.longitude,
+    required this.capturedAt,
+    this.accuracy,
+    this.heading,
+    this.speed,
+  });
+
+  final double latitude;
+  final double longitude;
+  final DateTime capturedAt;
+  final double? accuracy;
+  final double? heading;
+  final double? speed;
+
+  factory LiveLocationSummary.fromJson(Map<String, dynamic> json) {
+    return LiveLocationSummary(
+      latitude: (json['latitude'] as num).toDouble(),
+      longitude: (json['longitude'] as num).toDouble(),
+      accuracy: (json['accuracy'] as num?)?.toDouble(),
+      heading: (json['heading'] as num?)?.toDouble(),
+      speed: (json['speed'] as num?)?.toDouble(),
+      capturedAt: DateTime.parse(json['captured_at'].toString()),
+    );
+  }
+}
+
+class TrackingSummary {
+  const TrackingSummary({
+    required this.requestId,
+    required this.status,
+    required this.statusMeta,
+    required this.stops,
+    required this.locationStale,
+    this.driverName,
+    this.vehiclePlate,
+    this.vehicleType,
+    this.liveLocation,
+  });
+
+  final String requestId;
+  final String status;
+  final Map<String, dynamic> statusMeta;
+  final List<Map<String, dynamic>> stops;
+  final bool locationStale;
+  final String? driverName;
+  final String? vehiclePlate;
+  final String? vehicleType;
+  final LiveLocationSummary? liveLocation;
+
+  factory TrackingSummary.fromJson(Map<String, dynamic> json) {
+    final driver = json['driver'] as Map<String, dynamic>?;
+    final vehicle = driver?['vehicle'] as Map<String, dynamic>?;
+    final location = json['live_location'] as Map<String, dynamic>?;
+    return TrackingSummary(
+      requestId: json['id'] as String,
+      status: json['status'] as String,
+      statusMeta: (json['status_meta'] as Map?)?.cast<String, dynamic>() ??
+          const {},
+      stops: (json['stops'] as List? ?? const [])
+          .whereType<Map<String, dynamic>>()
+          .toList(growable: false),
+      locationStale: json['location_stale'] == true,
+      driverName: driver?['name']?.toString(),
+      vehiclePlate: vehicle?['plate_number']?.toString(),
+      vehicleType: vehicle?['type']?.toString(),
+      liveLocation: location == null
+          ? null
+          : LiveLocationSummary.fromJson(location),
+    );
+  }
+}
+
 class WalletSummary {
   const WalletSummary({
     required this.id,
@@ -491,12 +566,20 @@ abstract interface class BookingHistoryGateway {
   );
 }
 
+abstract interface class BookingTrackingGateway {
+  Future<TrackingSummary> loadTracking(
+    BookingSession session,
+    String serviceRequestId,
+  );
+}
+
 class BookingApi
     implements
         BookingGateway,
         BookingSupportGateway,
         CustomerAccountGateway,
-        BookingHistoryGateway {
+        BookingHistoryGateway,
+        BookingTrackingGateway {
   BookingApi({ApiTransport? transport, this.deviceId = 'customer-app-session'})
     : _transport = transport ?? createApiTransport();
 
@@ -788,6 +871,20 @@ class BookingApi
     );
 
     return ServiceRequestSummary.fromJson(_data(response));
+  }
+
+  @override
+  Future<TrackingSummary> loadTracking(
+    BookingSession session,
+    String serviceRequestId,
+  ) async {
+    final response = await _transport.send(
+      method: 'GET',
+      uri: _uri(session, '/service-requests/$serviceRequestId/tracking'),
+      token: session.token,
+    );
+
+    return TrackingSummary.fromJson(_data(response));
   }
 
   @override

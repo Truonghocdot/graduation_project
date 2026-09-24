@@ -3,6 +3,7 @@ import 'package:socket_io_client/socket_io_client.dart' as io;
 class BookingRealtime {
   io.Socket? _socket;
   String? _requestId;
+  void Function(Map<String, dynamic> event)? eventHandler;
 
   void connect({
     required String url,
@@ -26,7 +27,12 @@ class BookingRealtime {
       }
       onChange();
     });
-    socket.on('booking:event', (_) => onChange());
+    socket.on('booking:event', (event) {
+      if (event is Map) {
+        eventHandler?.call(event.cast<String, dynamic>());
+      }
+      onChange();
+    });
     socket.on('notification:event', (_) => onChange());
     socket.connect();
   }
@@ -46,5 +52,6 @@ class BookingRealtime {
     _socket?.dispose();
     _socket = null;
     _requestId = null;
+    eventHandler = null;
   }
 }

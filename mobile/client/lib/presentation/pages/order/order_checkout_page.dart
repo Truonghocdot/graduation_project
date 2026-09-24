@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../api/booking_api.dart';
@@ -18,9 +20,20 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
   PaymentChoice payment = PaymentChoice.wallet;
   PayerChoice payer = PayerChoice.orderer;
   final recipient = TextEditingController();
+  DateTime now = DateTime.now();
+  Timer? _expiryTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _expiryTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() => now = DateTime.now());
+    });
+  }
 
   @override
   void dispose() {
+    _expiryTimer?.cancel();
     recipient.dispose();
     super.dispose();
   }
@@ -36,7 +49,8 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
             body: Center(child: Text('Báo giá không còn khả dụng.')),
           );
         }
-        final expired = !quote.expiresAt.isAfter(DateTime.now());
+        final remaining = quote.expiresAt.difference(now);
+        final expired = remaining.isNegative || remaining.inSeconds == 0;
         return Scaffold(
           appBar: AppBar(title: const Text('Xác nhận dịch vụ')),
           body: ListView(
@@ -66,6 +80,18 @@ class _OrderCheckoutPageState extends State<OrderCheckoutPage> {
                       Text(
                         '${(quote.distanceMeters / 1000).toStringAsFixed(1)} km · '
                         '${(quote.durationSeconds / 60).ceil()} phút',
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        expired
+                            ? 'Báo giá đã hết hạn'
+                            : 'Báo giá còn hiệu lực ${remaining.inMinutes.toString().padLeft(2, '0')}:${(remaining.inSeconds % 60).toString().padLeft(2, '0')}',
+                        style: TextStyle(
+                          color: expired
+                              ? Theme.of(context).colorScheme.error
+                              : Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ],
                   ),

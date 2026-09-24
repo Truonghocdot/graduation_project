@@ -2,6 +2,7 @@ import 'package:client/api/booking_api.dart';
 import 'package:client/booking_app.dart';
 import 'package:client/api/session_store.dart';
 import 'package:client/api/booking_realtime.dart';
+import 'package:client/api/goong_location_api.dart';
 import 'package:client/presentation/pages/order/create_order_page.dart';
 import 'package:client/presentation/pages/profile/notifications_page.dart';
 import 'package:flutter/material.dart';
@@ -63,6 +64,7 @@ void main() {
     await tester.pumpWidget(
       BookingApp(
         gateway: gateway,
+        goong: TestGoongLocationApi(),
         initialSession: const BookingSession(
           baseUrl: 'http://localhost/api/v1',
           token: 'test-token',
@@ -91,6 +93,25 @@ void main() {
         .onPressed!();
     await tester.pumpAndSettle();
     expect(find.byType(CreateOrderPage), findsOneWidget);
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('pickup-location-field')),
+        matching: find.byType(TextField),
+      ),
+      'Pickup',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('dropoff-location-field')),
+        matching: find.byType(TextField),
+      ),
+      'Dropoff',
+    );
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
 
     await tester.drag(find.byType(ListView).last, const Offset(0, -500));
     await tester.pumpAndSettle();
@@ -218,6 +239,30 @@ class FakeBookingRealtime extends BookingRealtime {
   void reconnected() => _onChange?.call();
   @override
   void dispose() {}
+}
+
+class TestGoongLocationApi extends GoongLocationApi {
+  TestGoongLocationApi() : super(apiKey: 'test-key');
+
+  @override
+  Future<GoongPlace> geocode(String address) async => GoongPlace(
+    placeId: address,
+    address: address,
+    coordinate: address == 'Pickup'
+        ? const GoongCoordinate(latitude: 10.77, longitude: 106.68)
+        : const GoongCoordinate(latitude: 10.78, longitude: 106.69),
+  );
+
+  @override
+  Future<GoongRoute> directions({
+    required GoongCoordinate origin,
+    required GoongCoordinate destination,
+    String vehicle = 'bike',
+  }) async => GoongRoute(
+    distanceMeters: 2_000,
+    durationSeconds: 600,
+    geometry: [origin, destination],
+  );
 }
 
 class FakeBookingSessionStore implements BookingSessionStore {

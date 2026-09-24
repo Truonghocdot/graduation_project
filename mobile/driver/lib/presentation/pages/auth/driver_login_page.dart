@@ -18,6 +18,7 @@ class DriverLoginPage extends StatefulWidget {
 class _DriverLoginPageState extends State<DriverLoginPage> {
   final phone = TextEditingController();
   final password = TextEditingController();
+  String? validationError;
 
   @override
   void dispose() {
@@ -56,6 +57,8 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
                     controller: phone,
                     enabled: !state.busy,
                     keyboardType: TextInputType.phone,
+                    autofillHints: const [AutofillHints.telephoneNumber],
+                    textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
                       labelText: 'Số điện thoại',
                       prefixIcon: Icon(Icons.phone_outlined),
@@ -66,13 +69,15 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
                     controller: password,
                     enabled: !state.busy,
                     obscureText: true,
+                    autofillHints: const [AutofillHints.password],
+                    textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _login(),
                     decoration: const InputDecoration(
                       labelText: 'Mật khẩu',
                       prefixIcon: Icon(Icons.lock_outline),
                     ),
                   ),
-                  if (state.error case final error?) ...[
+                  if (validationError ?? state.error case final error?) ...[
                     const SizedBox(height: 12),
                     DriverErrorBanner(message: error),
                   ],
@@ -121,7 +126,11 @@ class _DriverLoginPageState extends State<DriverLoginPage> {
   }
 
   Future<void> _login() async {
-    if (phone.text.trim().isEmpty || password.text.isEmpty) return;
+    if (phone.text.trim().isEmpty || password.text.isEmpty) {
+      setState(() => validationError = 'Nhập số điện thoại và mật khẩu.');
+      return;
+    }
+    setState(() => validationError = null);
     await widget.controller.authenticate(phone.text.trim(), password.text);
   }
 
