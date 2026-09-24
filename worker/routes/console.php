@@ -13,7 +13,7 @@ Schedule::command('matching:dispatch')
     ->withoutOverlapping();
 
 Schedule::command('matching:expire-offers')
-    ->everyTenSeconds()
+    ->everyFiveSeconds()
     ->withoutOverlapping();
 
 Schedule::command('outbox:publish')

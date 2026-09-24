@@ -11,7 +11,6 @@ use App\Models\Quote;
 use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\VehicleType;
-use App\Services\Maps\ServiceAreaService;
 use App\Services\Pricing\PricingService;
 use App\Services\Pricing\VoucherPreviewService;
 use Carbon\CarbonImmutable;
@@ -21,7 +20,6 @@ class QuoteService
 {
     public function __construct(
         private readonly MapProvider $mapProvider,
-        private readonly ServiceAreaService $serviceAreaService,
         private readonly PricingService $pricingService,
         private readonly VoucherPreviewService $voucherPreviewService,
     ) {}
@@ -41,11 +39,6 @@ class QuoteService
         $servicePayload = $data['service_payload'];
 
         $this->validateVehicleCapacity($serviceType, $vehicleType, $servicePayload);
-        $serviceArea = $this->serviceAreaService->assertRouteAvailable(
-            $serviceType,
-            $pickup,
-            $dropoff,
-        );
         $route = $this->mapProvider->route($pickup, $dropoff, $vehicleType->unique_key);
         $pricingRule = $this->pricingService->currentRule($serviceType, $vehicleType);
         $subtotal = $this->pricingService->calculate($pricingRule, $route->distanceMeters);
@@ -69,10 +62,6 @@ class QuoteService
         }
 
         $routeSnapshot = $route->toArray();
-        $routeSnapshot['service_area'] = [
-            'id' => $serviceArea->id,
-            'name' => $serviceArea->name,
-        ];
 
         $quote = Quote::query()->create([
             'requested_by' => $user->id,

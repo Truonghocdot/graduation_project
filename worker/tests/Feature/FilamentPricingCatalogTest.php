@@ -5,7 +5,6 @@ use App\Enums\ServiceType;
 use App\Filament\Pages\SystemConfiguration;
 use App\Filament\Resources\PricingRules\Pages\CreatePricingRule;
 use App\Filament\Resources\PricingRules\PricingRuleResource;
-use App\Filament\Resources\ServiceAreas\Pages\CreateServiceArea;
 use App\Filament\Resources\SystemSettings\Pages\CreateSystemSetting;
 use App\Models\PricingRule;
 use App\Models\Quote;
@@ -85,38 +84,6 @@ test('prevents editing a pricing rule after a quote uses it', function () {
     expect(PricingRuleResource::canEdit($rule))->toBeFalse();
     $this->get(PricingRuleResource::getUrl('edit', ['record' => $rule]))
         ->assertForbidden();
-});
-
-test('creates a polygon service area through Filament and audits it', function () {
-    actingAsPricingAdmin();
-    $boundary = [
-        'type' => 'Polygon',
-        'coordinates' => [[
-            [106.60, 10.70],
-            [106.80, 10.70],
-            [106.80, 10.90],
-            [106.60, 10.90],
-            [106.60, 10.70],
-        ]],
-    ];
-
-    Livewire::test(CreateServiceArea::class)
-        ->assertSee('goongBoundaryPicker')
-        ->assertSee('height: 28rem')
-        ->fillForm([
-            'name' => 'Ho Chi Minh City',
-            'service_type' => ServiceType::Delivery->value,
-            'boundary' => json_encode($boundary, JSON_THROW_ON_ERROR),
-            'is_active' => true,
-        ])
-        ->call('create')
-        ->assertHasNoFormErrors();
-
-    $this->assertDatabaseHas('service_areas', [
-        'name' => 'Ho Chi Minh City',
-        'service_type' => ServiceType::Delivery->value,
-    ]);
-    $this->assertDatabaseHas('audit_logs', ['action' => 'SERVICE_AREA_CREATED']);
 });
 
 test('creates a numeric pricing system setting through its Filament tab', function () {

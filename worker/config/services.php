@@ -38,7 +38,6 @@ return [
     'goong' => [
         'base_url' => env('GOONG_BASE_URL', 'https://rsapi.goong.io'),
         'api_key' => env('GOONG_API_KEY'),
-        'map_key' => env('GOONG_MAP_KEY'),
         'connect_timeout_seconds' => (int) env('GOONG_CONNECT_TIMEOUT_SECONDS', 3),
         'timeout_seconds' => (int) env('GOONG_TIMEOUT_SECONDS', 8),
         'retry_times' => (int) env('GOONG_RETRY_TIMES', 2),

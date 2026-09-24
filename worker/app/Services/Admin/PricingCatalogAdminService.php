@@ -5,7 +5,6 @@ namespace App\Services\Admin;
 use App\Enums\RoleKey;
 use App\Models\AuditLog;
 use App\Models\PricingRule;
-use App\Models\ServiceArea;
 use App\Models\SystemSetting;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -80,41 +79,6 @@ class PricingCatalogAdminService
 
             return $pricingRule->load(['vehicleType', 'creator']);
         });
-    }
-
-    /** @param array<string, mixed> $data */
-    public function createServiceArea(array $data, User $admin): ServiceArea
-    {
-        $boundary = $this->decodeJson($data['boundary'] ?? null, 'boundary');
-
-        if (! is_array($boundary)) {
-            throw ValidationException::withMessages(['boundary' => ['Ranh giới phải là một đối tượng JSON.']]);
-        }
-
-        $data['boundary'] = $boundary;
-        $this->validateBoundary($data['boundary']);
-        $serviceArea = ServiceArea::query()->create($data);
-        $this->audit($admin, 'SERVICE_AREA_CREATED', $serviceArea);
-
-        return $serviceArea;
-    }
-
-    /** @param array<string, mixed> $data */
-    public function updateServiceArea(ServiceArea $serviceArea, array $data, User $admin): ServiceArea
-    {
-        $boundary = $this->decodeJson($data['boundary'] ?? null, 'boundary');
-
-        if (! is_array($boundary)) {
-            throw ValidationException::withMessages(['boundary' => ['Ranh giới phải là một đối tượng JSON.']]);
-        }
-
-        $data['boundary'] = $boundary;
-        $this->validateBoundary($data['boundary']);
-        $before = $serviceArea->attributesToArray();
-        $serviceArea->update($data);
-        $this->audit($admin, 'SERVICE_AREA_UPDATED', $serviceArea, $before);
-
-        return $serviceArea;
     }
 
     /** @param array<string, mixed> $data */
@@ -203,24 +167,6 @@ class PricingCatalogAdminService
 
         if (! $valid) {
             throw ValidationException::withMessages(['value' => ['Thiết lập giá nằm ngoài phạm vi cho phép.']]);
-        }
-    }
-
-    /** @param array<string, mixed> $boundary */
-    private function validateBoundary(array $boundary): void
-    {
-        $type = $boundary['type'] ?? null;
-        $valid = in_array($type, ['Polygon', 'MultiPolygon'], true)
-            && isset($boundary['coordinates'])
-            && is_array($boundary['coordinates']);
-        $valid = $valid || ($type === 'Bounds'
-            && is_array($boundary['southwest'] ?? null)
-            && is_array($boundary['northeast'] ?? null));
-
-        if (! $valid) {
-            throw ValidationException::withMessages([
-                'boundary' => ['Hãy dùng GeoJSON Polygon/MultiPolygon hoặc Bounds có điểm tây nam và đông bắc.'],
-            ]);
         }
     }
 

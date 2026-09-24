@@ -22,7 +22,6 @@ class VietnameseLabel
             'base_fare' => 'Cước cơ bản',
             'body' => 'Nội dung',
             'booking_type' => 'Loại đặt dịch vụ',
-            'boundary' => 'Ranh giới khu vực',
             'brand' => 'Hãng xe',
             'cancellation_reason_code' => 'Lý do hủy',
             'cash_collected' => 'Tiền mặt đã thu',

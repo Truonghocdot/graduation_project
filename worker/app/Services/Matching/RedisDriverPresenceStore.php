@@ -51,8 +51,11 @@ class RedisDriverPresenceStore implements DriverPresenceStore
         float $radiusMeters,
         int $limit,
     ): array {
-        $rows = Redis::command('GEOSEARCH', [
-            self::GEO_KEY,
+        // Predis treats GEOSEARCH as a structured command and does not accept
+        // the raw Redis token list passed through Redis::command().
+        $rows = Redis::connection()->executeRaw([
+            'GEOSEARCH',
+            $this->prefixedGeoKey(),
             'FROMLONLAT',
             $longitude,
             $latitude,
@@ -81,6 +84,11 @@ class RedisDriverPresenceStore implements DriverPresenceStore
         }
 
         return $matches;
+    }
+
+    private function prefixedGeoKey(): string
+    {
+        return (string) config('database.redis.options.prefix', '').self::GEO_KEY;
     }
 
     /** @param array<int, string> $serviceTypes */

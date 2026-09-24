@@ -6,7 +6,6 @@ use App\Enums\BookingType;
 use App\Enums\DiscountType;
 use App\Enums\ServiceType;
 use App\Models\PricingRule;
-use App\Models\ServiceArea;
 use App\Models\User;
 use App\Models\VehicleType;
 use App\Models\Voucher;
@@ -60,20 +59,6 @@ function createQuoteCatalog(
         'effective_from' => now()->subDay(),
         'effective_to' => null,
         'is_active' => true,
-    ]);
-
-    ServiceArea::factory()->create([
-        'service_type' => $serviceType,
-        'boundary' => [
-            'type' => 'Polygon',
-            'coordinates' => [[
-                [106.60, 10.70],
-                [106.80, 10.70],
-                [106.80, 10.90],
-                [106.60, 10.90],
-                [106.60, 10.70],
-            ]],
-        ],
     ]);
 
     return ['vehicle' => $vehicle, 'rule' => $rule];
@@ -151,7 +136,7 @@ test('creates a drive car quote with the configured extra kilometre rate', funct
         ->and($response->json('data.service_type'))->toBe(ServiceType::Drive->value);
 });
 
-test('rejects a quote outside the configured service area before requesting a route', function () {
+test('creates a quote without requiring configured service areas', function () {
     $catalog = createQuoteCatalog(ServiceType::Delivery, 'MOTORBIKE', 18_000, 5_000);
     $user = User::factory()->create();
     $map = new FakeMapProvider(new RouteResult('fake', 1_000, 300, null));
@@ -160,12 +145,10 @@ test('rejects a quote outside the configured service area before requesting a ro
     $payload = quotePayload($catalog['vehicle']);
     $payload['dropoff']['latitude'] = 12.0;
 
-    $this->postJson('/api/v1/quotes', $payload)
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('service_area');
+    $this->postJson('/api/v1/quotes', $payload)->assertCreated();
 
-    expect($map->calls)->toBeEmpty();
-    $this->assertDatabaseCount('quotes', 0);
+    expect($map->calls)->toHaveCount(1);
+    $this->assertDatabaseCount('quotes', 1);
 });
 
 test('rejects passenger count above vehicle capacity', function () {
