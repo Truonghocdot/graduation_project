@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
+import 'package:http/http.dart' as http;
 
 import '../../client_app_controller.dart';
 import '../../widgets/app_feedback.dart';
@@ -163,10 +165,48 @@ class ProfilePage extends StatelessWidget {
                     context: context,
                     builder: (context) => AlertDialog(
                       title: const Text('Thông tin VietQR'),
-                      content: SelectableText(
-                        '${topup.reference}\n${topup.vietQrPayload}',
+                      content: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (topup.vietQrImageUrl case final imageUrl?)
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.network(
+                                  imageUrl,
+                                  fit: BoxFit.contain,
+                                  loadingBuilder: (context, child, progress) =>
+                                      progress == null
+                                      ? child
+                                      : const SizedBox(
+                                          height: 240,
+                                          child: Center(
+                                            child: CircularProgressIndicator(),
+                                          ),
+                                        ),
+                                  errorBuilder: (_, _, _) => const Text(
+                                    'Không tải được ảnh QR. Bạn vẫn có thể dùng payload bên dưới.',
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(height: 12),
+                            Text('Nội dung: ${topup.reference}'),
+                            const SizedBox(height: 8),
+                            SelectableText(topup.vietQrPayload),
+                          ],
+                        ),
                       ),
                       actions: [
+                        if (topup.vietQrImageUrl case final imageUrl?)
+                          TextButton.icon(
+                            onPressed: () => _saveQrImage(
+                              context,
+                              imageUrl,
+                              topup.reference,
+                            ),
+                            icon: const Icon(Icons.download_outlined),
+                            label: const Text('Lưu ảnh QR'),
+                          ),
                         TextButton(
                           onPressed: () => Navigator.pop(context),
                           child: const Text('Đóng'),
@@ -184,6 +224,35 @@ class ProfilePage extends StatelessWidget {
       ),
     );
     await disposeTextControllerAfterRoute(amount);
+  }
+
+  Future<void> _saveQrImage(
+    BuildContext context,
+    String imageUrl,
+    String reference,
+  ) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('QR image request failed');
+      }
+      await Gal.putImageBytes(
+        response.bodyBytes,
+        name: 'vietqr_$reference',
+        album: 'Drive',
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu ảnh QR vào thư viện.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể lưu ảnh QR.')),
+        );
+      }
+    }
   }
 
   Future<void> _notifications(BuildContext context) async {

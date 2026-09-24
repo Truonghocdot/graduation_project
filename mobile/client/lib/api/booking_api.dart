@@ -335,6 +335,7 @@ class WalletTopupSummary {
     required this.status,
     required this.reference,
     required this.vietQrPayload,
+    this.vietQrImageUrl,
   });
 
   final String id;
@@ -342,6 +343,7 @@ class WalletTopupSummary {
   final String status;
   final String reference;
   final String vietQrPayload;
+  final String? vietQrImageUrl;
 
   factory WalletTopupSummary.fromJson(Map<String, dynamic> json) {
     return WalletTopupSummary(
@@ -350,6 +352,7 @@ class WalletTopupSummary {
       status: json['status'] as String,
       reference: json['vietqr_reference'] as String,
       vietQrPayload: json['vietqr_payload'] as String,
+      vietQrImageUrl: json['vietqr_image_url']?.toString(),
     );
   }
 }

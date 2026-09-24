@@ -106,13 +106,16 @@ class PricingCatalogAdminService
         return $setting;
     }
 
-    /** @param array{quote_ttl_seconds: int|float, rounding_unit: int|float, float_tolerance: int|float} $data */
+    /** @param array{quote_ttl_seconds: int|float, rounding_unit: int|float, float_tolerance: int|float, vietqr_bank_code: string, vietqr_account_number: string, vietqr_account_name: string} $data */
     public function saveSystemSettings(array $data, User $admin): void
     {
         foreach ([
             'pricing.quote_ttl_seconds' => $data['quote_ttl_seconds'],
             'pricing.rounding_unit' => $data['rounding_unit'],
             'pricing.float_tolerance' => $data['float_tolerance'],
+            'finance.vietqr.bank_code' => json_encode($data['vietqr_bank_code'], JSON_UNESCAPED_UNICODE),
+            'finance.vietqr.account_number' => json_encode($data['vietqr_account_number'], JSON_UNESCAPED_UNICODE),
+            'finance.vietqr.account_name' => json_encode($data['vietqr_account_name'], JSON_UNESCAPED_UNICODE),
         ] as $key => $value) {
             $setting = SystemSetting::query()->whereKey($key)->first();
             $payload = [
@@ -148,10 +151,25 @@ class PricingCatalogAdminService
             'pricing.quote_ttl_seconds',
             'pricing.rounding_unit',
             'pricing.float_tolerance',
+            'finance.vietqr.bank_code',
+            'finance.vietqr.account_number',
+            'finance.vietqr.account_name',
         ];
 
         if (! in_array($key, $allowedKeys, true)) {
             throw ValidationException::withMessages(['key' => ['Thiết lập giá này không được hỗ trợ.']]);
+        }
+
+        if (str_starts_with($key, 'finance.vietqr.')) {
+            if (! is_string($value) || trim($value) === '') {
+                throw ValidationException::withMessages(['value' => ['Cấu hình VietQR không được để trống.']]);
+            }
+
+            if (mb_strlen(trim($value)) > 120) {
+                throw ValidationException::withMessages(['value' => ['Cấu hình VietQR vượt quá độ dài cho phép.']]);
+            }
+
+            return;
         }
 
         if (! is_numeric($value)) {

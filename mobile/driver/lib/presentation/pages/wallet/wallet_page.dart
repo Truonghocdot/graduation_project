@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gal/gal.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../api/driver_api.dart';
 import '../../driver_app_controller.dart';
@@ -293,6 +295,25 @@ class _WalletPageState extends State<WalletPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text('Số tiền: ${topup.amount.toStringAsFixed(0)} VND'),
+              if (topup.vietQrImageUrl case final imageUrl?) ...[
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (context, child, progress) => progress == null
+                        ? child
+                        : const SizedBox(
+                            height: 240,
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                    errorBuilder: (_, _, _) => const Text(
+                      'Không tải được ảnh QR. Dùng payload bên dưới để chuyển khoản.',
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               Text('Nội dung chuyển khoản: ${topup.reference}'),
               const SizedBox(height: 12),
@@ -306,6 +327,12 @@ class _WalletPageState extends State<WalletPage> {
           ),
         ),
         actions: [
+          if (topup.vietQrImageUrl case final imageUrl?)
+            TextButton.icon(
+              onPressed: () => _saveQrImage(context, imageUrl, topup.reference),
+              icon: const Icon(Icons.download_outlined),
+              label: const Text('Lưu ảnh QR'),
+            ),
           TextButton.icon(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: topup.vietQrPayload));
@@ -332,5 +359,34 @@ class _WalletPageState extends State<WalletPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _saveQrImage(
+    BuildContext context,
+    String imageUrl,
+    String reference,
+  ) async {
+    try {
+      final response = await http.get(Uri.parse(imageUrl));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('QR image request failed');
+      }
+      await Gal.putImageBytes(
+        response.bodyBytes,
+        name: 'vietqr_$reference',
+        album: 'Drive',
+      );
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã lưu ảnh QR vào thư viện.')),
+        );
+      }
+    } catch (_) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể lưu ảnh QR.')),
+        );
+      }
+    }
   }
 }

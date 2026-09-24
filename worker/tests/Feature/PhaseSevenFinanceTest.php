@@ -7,6 +7,7 @@ use App\Enums\ServiceType;
 use App\Models\DriverBankAccount;
 use App\Models\LedgerAccount;
 use App\Models\Role;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\Wallet;
 use App\Models\WithdrawalRequest;
@@ -65,6 +66,21 @@ test('driver can create a VietQR top-up while the wallet is negative', function 
         'finance.vietqr.account_name' => 'PROJECT',
     ]);
     $scenario = ExecutionScenarioBuilder::create(ServiceType::Drive);
+    SystemSetting::query()->create([
+        'key' => 'finance.vietqr.bank_code',
+        'value' => 'vietinbank',
+        'is_public' => false,
+    ]);
+    SystemSetting::query()->create([
+        'key' => 'finance.vietqr.account_number',
+        'value' => '113366668888',
+        'is_public' => false,
+    ]);
+    SystemSetting::query()->create([
+        'key' => 'finance.vietqr.account_name',
+        'value' => 'DRIVE PAYMENTS',
+        'is_public' => false,
+    ]);
     $scenario['driver_wallet']->forceFill(['balance' => -150_000])->save();
     Sanctum::actingAs($scenario['driver'], ['driver:*']);
 
@@ -74,7 +90,10 @@ test('driver can create a VietQR top-up while the wallet is negative', function 
 
     expect($response->json('data.status'))->toBe('PENDING')
         ->and($response->json('data.amount'))->toBe(200_000)
-        ->and($response->json('data.vietqr_reference'))->not->toBeEmpty();
+        ->and($response->json('data.vietqr_reference'))->not->toBeEmpty()
+        ->and($response->json('data.vietqr_image_url'))
+        ->toContain('https://img.vietqr.io/image/vietinbank-113366668888-compact2.png')
+        ->toContain('amount=200000');
     $this->assertDatabaseHas('wallet_topups', [
         'wallet_id' => $scenario['driver_wallet']->id,
         'amount' => 200_000,

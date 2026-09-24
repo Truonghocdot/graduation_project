@@ -18,6 +18,7 @@ class TopupService
     public function __construct(
         private readonly IdempotencyService $idempotency,
         private readonly LedgerService $ledger,
+        private readonly VietQrConfiguration $vietQr,
     ) {}
 
     public function create(User $user, float $amount, string $idempotencyKey): WalletTopup
@@ -39,10 +40,11 @@ class TopupService
 
             $wallet = $this->ensureWallet($user);
             $reference = 'TOPUP'.mb_strtoupper(Str::random(12));
+            $configuration = $this->vietQr->values();
             $payload = http_build_query([
-                'bank' => config('finance.vietqr.bank_code'),
-                'account' => config('finance.vietqr.account_number'),
-                'account_name' => config('finance.vietqr.account_name'),
+                'bank' => $configuration['bank_code'],
+                'account' => $configuration['account_number'],
+                'account_name' => $configuration['account_name'],
                 'amount' => $amount,
                 'content' => $reference,
             ]);

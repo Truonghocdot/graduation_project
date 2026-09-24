@@ -113,6 +113,9 @@ test('saves all pricing settings from the standalone configuration page', functi
             'quote_ttl_seconds' => 600,
             'rounding_unit' => 500,
             'float_tolerance' => 0.05,
+            'vietqr_bank_code' => 'vietinbank',
+            'vietqr_account_number' => '113366668888',
+            'vietqr_account_name' => 'DRIVE PAYMENTS',
         ])
         ->call('save')
         ->assertHasNoFormErrors();
@@ -120,4 +123,16 @@ test('saves all pricing settings from the standalone configuration page', functi
     $this->assertDatabaseHas('system_settings', ['key' => 'pricing.quote_ttl_seconds', 'value' => 600]);
     $this->assertDatabaseHas('system_settings', ['key' => 'pricing.rounding_unit', 'value' => 500]);
     $this->assertDatabaseHas('system_settings', ['key' => 'pricing.float_tolerance', 'value' => 0.05]);
+    $this->assertDatabaseHas('system_settings', [
+        'key' => 'finance.vietqr.bank_code',
+        'value' => '"vietinbank"',
+    ]);
+    $this->assertDatabaseHas('system_settings', [
+        'key' => 'finance.vietqr.account_number',
+        'value' => '"113366668888"',
+    ]);
+    $this->assertDatabaseHas('system_settings', [
+        'key' => 'finance.vietqr.account_name',
+        'value' => '"DRIVE PAYMENTS"',
+    ]);
 });

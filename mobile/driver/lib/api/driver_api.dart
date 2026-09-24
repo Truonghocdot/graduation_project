@@ -269,6 +269,7 @@ class DriverWalletTopupSummary {
     required this.reference,
     required this.vietQrPayload,
     required this.expiresAt,
+    this.vietQrImageUrl,
   });
 
   final String id;
@@ -277,6 +278,7 @@ class DriverWalletTopupSummary {
   final String reference;
   final String vietQrPayload;
   final DateTime expiresAt;
+  final String? vietQrImageUrl;
 
   factory DriverWalletTopupSummary.fromJson(Map<String, dynamic> json) {
     return DriverWalletTopupSummary(
@@ -286,6 +288,7 @@ class DriverWalletTopupSummary {
       reference: json['vietqr_reference'] as String,
       vietQrPayload: json['vietqr_payload'] as String,
       expiresAt: DateTime.parse(json['expires_at'].toString()),
+      vietQrImageUrl: json['vietqr_image_url']?.toString(),
     );
   }
 }

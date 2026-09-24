@@ -31,7 +31,7 @@ class SystemConfiguration extends Page implements HasForms
 
     protected string $view = 'filament.pages.system-configuration';
 
-    /** @var array<string, int|float> */
+    /** @var array<string, int|float|string> */
     public array $data = [];
 
     public static function canAccess(): bool
@@ -47,6 +47,9 @@ class SystemConfiguration extends Page implements HasForms
             'quote_ttl_seconds' => $this->setting('pricing.quote_ttl_seconds', 300),
             'rounding_unit' => $this->setting('pricing.rounding_unit', 1_000),
             'float_tolerance' => $this->setting('pricing.float_tolerance', 0.01),
+            'vietqr_bank_code' => $this->setting('finance.vietqr.bank_code', (string) config('finance.vietqr.bank_code', 'MB')),
+            'vietqr_account_number' => $this->setting('finance.vietqr.account_number', (string) config('finance.vietqr.account_number', '')),
+            'vietqr_account_name' => $this->setting('finance.vietqr.account_name', (string) config('finance.vietqr.account_name', '')),
         ]);
     }
 
@@ -83,6 +86,24 @@ class SystemConfiguration extends Page implements HasForms
                             ->helperText('Khoảng 0 đến 1, dùng khi so sánh các phép tính tiền.'),
                     ])
                     ->columns(3),
+                Section::make('Thanh toán VietQR')
+                    ->description('Tài khoản nhận tiền dùng để tạo mã QR nạp ví cho khách hàng và tài xế.')
+                    ->schema([
+                        TextInput::make('vietqr_bank_code')
+                            ->label('Mã ngân hàng VietQR')
+                            ->required()
+                            ->maxLength(30)
+                            ->helperText('Ví dụ: MB, vietinbank, vcb.'),
+                        TextInput::make('vietqr_account_number')
+                            ->label('Số tài khoản nhận tiền')
+                            ->required()
+                            ->maxLength(40),
+                        TextInput::make('vietqr_account_name')
+                            ->label('Tên chủ tài khoản')
+                            ->required()
+                            ->maxLength(120),
+                    ])
+                    ->columns(3),
             ])
             ->statePath('data');
     }
@@ -103,9 +124,15 @@ class SystemConfiguration extends Page implements HasForms
             ->send();
     }
 
-    private function setting(string $key, int|float $default): int|float
+    private function setting(string $key, int|float|string $default): int|float|string
     {
-        $value = SystemSetting::query()->whereKey($key)->value('value');
+        $value = SystemSetting::query()->find($key)?->value;
+
+        if (is_string($default)) {
+            return is_scalar($value) && trim((string) $value) !== ''
+                ? (string) $value
+                : $default;
+        }
 
         return is_numeric($value) ? (float) $value : $default;
     }
