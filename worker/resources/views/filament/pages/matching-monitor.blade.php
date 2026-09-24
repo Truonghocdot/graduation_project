@@ -1,7 +1,4 @@
 <x-filament-panels::page>
-    @vite('resources/css/app.css',
-        'resources/js/app.js',
-    )
     <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white dark:border-white/10 dark:bg-gray-900">
         <table class="w-full text-left text-sm">
             <thead class="border-b border-gray-200 bg-gray-50 dark:border-white/10 dark:bg-white/5">

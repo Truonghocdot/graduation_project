@@ -23,6 +23,8 @@ class SystemSettingResource extends Resource
 {
     use RequiresAdminRole;
 
+    protected static bool $shouldRegisterNavigation = false;
+
     protected static ?string $model = SystemSetting::class;
 
     protected static ?string $recordTitleAttribute = 'key';

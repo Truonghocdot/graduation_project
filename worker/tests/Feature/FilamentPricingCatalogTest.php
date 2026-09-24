@@ -2,6 +2,7 @@
 
 use App\Enums\RoleKey;
 use App\Enums\ServiceType;
+use App\Filament\Pages\SystemConfiguration;
 use App\Filament\Resources\PricingRules\Pages\CreatePricingRule;
 use App\Filament\Resources\PricingRules\PricingRuleResource;
 use App\Filament\Resources\ServiceAreas\Pages\CreateServiceArea;
@@ -100,6 +101,8 @@ test('creates a polygon service area through Filament and audits it', function (
     ];
 
     Livewire::test(CreateServiceArea::class)
+        ->assertSee('goongBoundaryPicker')
+        ->assertSee('height: 28rem')
         ->fillForm([
             'name' => 'Ho Chi Minh City',
             'service_type' => ServiceType::Delivery->value,
@@ -133,4 +136,21 @@ test('creates a numeric pricing system setting through its Filament tab', functi
         'value' => 1_000,
     ]);
     $this->assertDatabaseHas('audit_logs', ['action' => 'SYSTEM_SETTING_CREATED']);
+});
+
+test('saves all pricing settings from the standalone configuration page', function () {
+    actingAsPricingAdmin();
+
+    Livewire::test(SystemConfiguration::class)
+        ->fillForm([
+            'quote_ttl_seconds' => 600,
+            'rounding_unit' => 500,
+            'float_tolerance' => 0.05,
+        ])
+        ->call('save')
+        ->assertHasNoFormErrors();
+
+    $this->assertDatabaseHas('system_settings', ['key' => 'pricing.quote_ttl_seconds', 'value' => 600]);
+    $this->assertDatabaseHas('system_settings', ['key' => 'pricing.rounding_unit', 'value' => 500]);
+    $this->assertDatabaseHas('system_settings', ['key' => 'pricing.float_tolerance', 'value' => 0.05]);
 });

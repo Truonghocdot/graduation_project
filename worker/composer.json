@@ -53,7 +53,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "@php artisan serve --host=0.0.0.0 --port=8000"
+            "@composer exec -- concurrently \"php artisan serve --host=0.0.0.0 --port=8000\" \"npm run dev\""
         ],
         "lint": [
             "pint --parallel"

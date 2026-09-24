@@ -142,6 +142,29 @@ class PricingCatalogAdminService
         return $setting;
     }
 
+    /** @param array{quote_ttl_seconds: int|float, rounding_unit: int|float, float_tolerance: int|float} $data */
+    public function saveSystemSettings(array $data, User $admin): void
+    {
+        foreach ([
+            'pricing.quote_ttl_seconds' => $data['quote_ttl_seconds'],
+            'pricing.rounding_unit' => $data['rounding_unit'],
+            'pricing.float_tolerance' => $data['float_tolerance'],
+        ] as $key => $value) {
+            $setting = SystemSetting::query()->whereKey($key)->first();
+            $payload = [
+                'key' => $key,
+                'value' => $value,
+                'is_public' => $setting?->is_public ?? false,
+            ];
+
+            if ($setting === null) {
+                $this->createSystemSetting($payload, $admin);
+            } else {
+                $this->updateSystemSetting($setting, $payload, $admin);
+            }
+        }
+    }
+
     private function decodeJson(mixed $value, string $field): mixed
     {
         if (! is_string($value)) {
